@@ -1,0 +1,32 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: vehicle_lpr_postgres
+    environment:
+      POSTGRES_DB: vehicle_lpr
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - vehicle_lpr_pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./apps/backend
+    container_name: vehicle_lpr_backend
+    environment:
+      APP_DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/vehicle_lpr
+      APP_INITIAL_BALANCE_VND: 100000
+      APP_CHARGE_PER_EVENT_VND: 2000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    command: >
+      /bin/sh -c "python scripts/run_migrations.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  vehicle_lpr_pgdata:
