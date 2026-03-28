@@ -1,14 +1,7 @@
 from __future__ import annotations
 
-"""Template API tests for barrier logic.
-
-These tests are intentionally scaffolded so QA can fill/adjust expected fields
-when barrier endpoints/response fields are finalized.
-"""
-
 from datetime import datetime
 
-import pytest
 from fastapi.testclient import TestClient
 
 TEST_CAMERA_ID = "11111111-1111-1111-1111-111111111111"
@@ -32,32 +25,28 @@ def _event_payload(
     }
 
 
-@pytest.mark.api
-def test_event_response_contains_barrier_fields_template(client: TestClient) -> None:
+def test_event_response_contains_barrier_fields(client: TestClient) -> None:
     payload = _event_payload("29A-55555", "in", track_id="barrier-api-1")
     res = client.post("/api/v1/events", json=payload)
     assert res.status_code == 200
 
     body = res.json()
-    # TODO: remove skips once backend adds fields to response contract
-    pytest.skip("TODO: assert barrier_action/barrier_reason/registration_status in response")
-    # Example assertions:
-    # assert "barrier_action" in body
-    # assert "barrier_reason" in body
-    # assert "registration_status" in body
+    assert "barrier_action" in body
+    assert "barrier_reason" in body
+    assert "registration_status" in body
 
 
-@pytest.mark.api
-def test_unknown_vehicle_in_auto_temporary_register_template(client: TestClient) -> None:
+def test_unknown_vehicle_in_auto_temporary_register(client: TestClient) -> None:
     payload = _event_payload("30F-88888", "in", track_id="barrier-api-2")
     res = client.post("/api/v1/events", json=payload)
     assert res.status_code == 200
 
-    pytest.skip("TODO: assert registration_status == temporary_registered and barrier_action == open")
+    body = res.json()
+    assert body["registration_status"] == "temporary_registered"
+    assert body["barrier_action"] == "open"
 
 
-@pytest.mark.api
-def test_temporary_vehicle_out_hold_template(client: TestClient) -> None:
+def test_temporary_vehicle_out_hold_then_verify_open(client: TestClient) -> None:
     plate = "30F-99999"
 
     in_res = client.post("/api/v1/events", json=_event_payload(plate, "in", track_id="barrier-api-3-in"))
@@ -65,20 +54,26 @@ def test_temporary_vehicle_out_hold_template(client: TestClient) -> None:
 
     out_res = client.post("/api/v1/events", json=_event_payload(plate, "out", track_id="barrier-api-3-out"))
     assert out_res.status_code == 200
+    out_body = out_res.json()
+    assert out_body["barrier_action"] == "hold"
+    assert out_body["needs_verification"] is True
 
-    pytest.skip("TODO: assert second response has barrier_action == hold and needs_verification == true")
-
-
-@pytest.mark.api
-def test_verify_endpoint_success_template(client: TestClient) -> None:
-    pytest.skip("TODO: call verify success endpoint then assert barrier opens")
-
-
-@pytest.mark.api
-def test_verify_endpoint_fail_template(client: TestClient) -> None:
-    pytest.skip("TODO: call verify fail endpoint then assert barrier remains hold")
+    verify_res = client.post(f"/api/v1/barrier-actions/verify?plate={plate}&actor=guard_1")
+    assert verify_res.status_code == 200
+    verify_body = verify_res.json()
+    assert verify_body["barrier_action"] == "open"
+    assert verify_body["needs_verification"] is False
+    assert verify_body["verified_by"] == "guard_1"
 
 
-@pytest.mark.api
-def test_barrier_log_query_template(client: TestClient) -> None:
-    pytest.skip("TODO: query barrier action log endpoint and validate reason/timestamp/actor")
+def test_barrier_log_query(client: TestClient) -> None:
+    plate = "51A-12345"
+    client.post("/api/v1/events", json=_event_payload(plate, "in", track_id="barrier-api-4-in"))
+    client.post("/api/v1/events", json=_event_payload(plate, "out", track_id="barrier-api-4-out"))
+
+    logs_res = client.get(f"/api/v1/barrier-actions?plate={plate}")
+    assert logs_res.status_code == 200
+    rows = logs_res.json()
+    assert len(rows) >= 2
+    assert "barrier_reason" in rows[0]
+    assert "created_at" in rows[0]

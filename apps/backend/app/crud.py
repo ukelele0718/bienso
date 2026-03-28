@@ -1,21 +1,21 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Iterable
 from uuid import uuid4
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .models import Account, PlateRead, Transaction, VehicleEvent
+from .models import Account, AuditLog, BarrierAction, PlateRead, Transaction, VehicleEvent
+from .services import decide_barrier
 
 
 class NotFoundError(Exception):
     pass
 
 
-def create_event(db: Session, payload: dict) -> VehicleEvent:
+def create_event(db: Session, payload: dict) -> tuple[VehicleEvent, BarrierAction | None]:
     event = VehicleEvent(
         id=str(uuid4()),
         camera_id=payload["camera_id"],
@@ -39,13 +39,17 @@ def create_event(db: Session, payload: dict) -> VehicleEvent:
     )
     db.add(plate_read)
 
+    barrier_action_row: BarrierAction | None = None
+
     if plate_text:
         account = db.execute(select(Account).where(Account.plate_text == plate_text)).scalar_one_or_none()
+
         if account is None:
             account = Account(
                 id=str(uuid4()),
                 plate_text=plate_text,
                 balance_vnd=settings.initial_balance_vnd,
+                registration_status="temporary_registered",
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
             )
@@ -63,6 +67,40 @@ def create_event(db: Session, payload: dict) -> VehicleEvent:
                 )
             )
 
+        decision = decide_barrier(account.registration_status, payload["direction"])
+        if account.registration_status != decision.registration_status:
+            account.registration_status = decision.registration_status
+
+        barrier_action_row = BarrierAction(
+            id=str(uuid4()),
+            event_id=event.id,
+            plate_text=plate_text,
+            registration_status=decision.registration_status,
+            barrier_action=decision.barrier_action,
+            barrier_reason=decision.barrier_reason,
+            needs_verification=decision.needs_verification,
+            verified_by=None,
+            verified_at=None,
+            created_at=payload["timestamp"],
+        )
+        db.add(barrier_action_row)
+
+        db.add(
+            AuditLog(
+                id=str(uuid4()),
+                user_id=None,
+                action="barrier_decision",
+                metadata_json={
+                    "event_id": event.id,
+                    "plate_text": plate_text,
+                    "barrier_action": decision.barrier_action,
+                    "barrier_reason": decision.barrier_reason,
+                    "needs_verification": decision.needs_verification,
+                },
+                created_at=payload["timestamp"],
+            )
+        )
+
         account.balance_vnd -= settings.charge_per_event_vnd
         account.updated_at = datetime.utcnow()
         db.add(
@@ -79,7 +117,9 @@ def create_event(db: Session, payload: dict) -> VehicleEvent:
 
     db.commit()
     db.refresh(event)
-    return event
+    if barrier_action_row:
+        db.refresh(barrier_action_row)
+    return event, barrier_action_row
 
 
 def list_events(
@@ -101,7 +141,15 @@ def list_events(
         stmt = stmt.where(VehicleEvent.vehicle_type == vehicle_type)
     if plate:
         stmt = stmt.join(PlateRead, PlateRead.event_id == VehicleEvent.id).where(PlateRead.plate_text == plate)
-    return list(db.execute(stmt).scalars().all())
+    return list(db.execute(stmt.order_by(VehicleEvent.timestamp.desc())).scalars().all())
+
+
+def get_event_plate_meta(db: Session, event_id: str) -> PlateRead | None:
+    return db.execute(select(PlateRead).where(PlateRead.event_id == event_id)).scalar_one_or_none()
+
+
+def get_event_barrier_meta(db: Session, event_id: str) -> BarrierAction | None:
+    return db.execute(select(BarrierAction).where(BarrierAction.event_id == event_id)).scalar_one_or_none()
 
 
 def get_account(db: Session, plate_text: str) -> Account:
@@ -112,7 +160,56 @@ def get_account(db: Session, plate_text: str) -> Account:
 
 
 def list_transactions(db: Session, account_id: str) -> list[Transaction]:
-    return list(db.execute(select(Transaction).where(Transaction.account_id == account_id)).scalars().all())
+    return list(
+        db.execute(select(Transaction).where(Transaction.account_id == account_id).order_by(Transaction.created_at.asc()))
+        .scalars()
+        .all()
+    )
+
+
+def list_barrier_actions_by_plate(db: Session, plate_text: str) -> list[BarrierAction]:
+    return list(
+        db.execute(
+            select(BarrierAction).where(BarrierAction.plate_text == plate_text).order_by(BarrierAction.created_at.asc())
+        )
+        .scalars()
+        .all()
+    )
+
+
+def verify_latest_hold(db: Session, plate_text: str, actor: str) -> BarrierAction:
+    row = db.execute(
+        select(BarrierAction)
+        .where(BarrierAction.plate_text == plate_text)
+        .order_by(BarrierAction.created_at.desc())
+    ).scalar_one_or_none()
+    if row is None:
+        raise NotFoundError
+    if row.barrier_action != "hold":
+        return row
+    row.barrier_action = "open"
+    row.barrier_reason = "manual_verify_open"
+    row.needs_verification = False
+    row.verified_by = actor
+    row.verified_at = datetime.utcnow()
+
+    db.add(
+        AuditLog(
+            id=str(uuid4()),
+            user_id=actor,
+            action="barrier_verify",
+            metadata_json={
+                "plate_text": plate_text,
+                "event_id": row.event_id,
+                "result": "open",
+            },
+            created_at=datetime.utcnow(),
+        )
+    )
+
+    db.commit()
+    db.refresh(row)
+    return row
 
 
 def get_realtime_stats(db: Session) -> dict:
@@ -133,5 +230,21 @@ def get_ocr_rate(db: Session) -> float:
 
 
 def get_traffic_stats(db: Session, group_by: str) -> list[dict]:
-    _ = group_by
-    return []
+    if group_by not in {"hour", "day"}:
+        group_by = "hour"
+    if group_by == "hour":
+        bucket_expr = func.to_char(VehicleEvent.timestamp, "YYYY-MM-DD HH24:00")
+    else:
+        bucket_expr = func.to_char(VehicleEvent.timestamp, "YYYY-MM-DD")
+
+    rows = db.execute(
+        select(
+            bucket_expr.label("bucket"),
+            func.count().filter(VehicleEvent.direction == "in").label("total_in"),
+            func.count().filter(VehicleEvent.direction == "out").label("total_out"),
+        )
+        .group_by(bucket_expr)
+        .order_by(bucket_expr)
+    ).all()
+
+    return [{"bucket": r.bucket, "total_in": int(r.total_in or 0), "total_out": int(r.total_out or 0)} for r in rows]

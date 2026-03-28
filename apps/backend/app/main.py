@@ -10,6 +10,7 @@ from . import crud
 from .db import get_db
 from .schemas import (
     AccountOut,
+    BarrierActionOut,
     ErrorOut,
     EventIn,
     EventOut,
@@ -19,15 +20,14 @@ from .schemas import (
     TransactionOut,
 )
 
-app = FastAPI(title="Vehicle LPR Backend", version="0.3.0")
+app = FastAPI(title="Vehicle LPR Backend", version="0.4.0")
 
 
 @app.post("/api/v1/events", response_model=EventOut)
 def create_event(payload: EventIn, db: Session = Depends(get_db)) -> EventOut:
-    event = crud.create_event(db, payload.model_dump())
-    plate_text = payload.plate_text
-    confidence = payload.confidence
-    snapshot_url = payload.snapshot_url
+    event, barrier_action = crud.create_event(db, payload.model_dump())
+    plate_read = crud.get_event_plate_meta(db, event.id)
+
     return EventOut(
         id=event.id,
         camera_id=event.camera_id,
@@ -35,9 +35,13 @@ def create_event(payload: EventIn, db: Session = Depends(get_db)) -> EventOut:
         direction=event.direction,
         vehicle_type=event.vehicle_type,
         track_id=event.track_id,
-        plate_text=plate_text,
-        confidence=confidence,
-        snapshot_url=snapshot_url,
+        plate_text=plate_read.plate_text if plate_read else None,
+        confidence=plate_read.confidence if plate_read else None,
+        snapshot_url=plate_read.snapshot_url if plate_read else None,
+        registration_status=barrier_action.registration_status if barrier_action else None,
+        barrier_action=barrier_action.barrier_action if barrier_action else None,
+        barrier_reason=barrier_action.barrier_reason if barrier_action else None,
+        needs_verification=barrier_action.needs_verification if barrier_action else None,
     )
 
 
@@ -51,20 +55,28 @@ def list_events(
     db: Session = Depends(get_db),
 ) -> List[EventOut]:
     events = crud.list_events(db, plate, from_time, to_time, direction, vehicle_type)
-    return [
-        EventOut(
-            id=e.id,
-            camera_id=e.camera_id,
-            timestamp=e.timestamp,
-            direction=e.direction,
-            vehicle_type=e.vehicle_type,
-            track_id=e.track_id,
-            plate_text=None,
-            confidence=None,
-            snapshot_url=None,
+    result: List[EventOut] = []
+    for e in events:
+        plate_read = crud.get_event_plate_meta(db, e.id)
+        barrier_action = crud.get_event_barrier_meta(db, e.id)
+        result.append(
+            EventOut(
+                id=e.id,
+                camera_id=e.camera_id,
+                timestamp=e.timestamp,
+                direction=e.direction,
+                vehicle_type=e.vehicle_type,
+                track_id=e.track_id,
+                plate_text=plate_read.plate_text if plate_read else None,
+                confidence=plate_read.confidence if plate_read else None,
+                snapshot_url=plate_read.snapshot_url if plate_read else None,
+                registration_status=barrier_action.registration_status if barrier_action else None,
+                barrier_action=barrier_action.barrier_action if barrier_action else None,
+                barrier_reason=barrier_action.barrier_reason if barrier_action else None,
+                needs_verification=barrier_action.needs_verification if barrier_action else None,
+            )
         )
-        for e in events
-    ]
+    return result
 
 
 @app.get("/api/v1/accounts/{plate_text}", response_model=AccountOut)
@@ -73,7 +85,11 @@ def get_account(plate_text: str, db: Session = Depends(get_db)) -> AccountOut:
         account = crud.get_account(db, plate_text)
     except crud.NotFoundError as exc:
         raise HTTPException(status_code=404, detail="account_not_found") from exc
-    return AccountOut(plate_text=account.plate_text, balance_vnd=account.balance_vnd)
+    return AccountOut(
+        plate_text=account.plate_text,
+        balance_vnd=account.balance_vnd,
+        registration_status=account.registration_status,
+    )
 
 
 @app.get("/api/v1/accounts/{plate_text}/transactions", response_model=List[TransactionOut])
@@ -95,6 +111,46 @@ def list_transactions(plate_text: str, db: Session = Depends(get_db)) -> List[Tr
         )
         for t in txs
     ]
+
+
+@app.get("/api/v1/barrier-actions", response_model=List[BarrierActionOut])
+def list_barrier_actions(plate: str = Query(...), db: Session = Depends(get_db)) -> List[BarrierActionOut]:
+    rows = crud.list_barrier_actions_by_plate(db, plate)
+    return [
+        BarrierActionOut(
+            id=row.id,
+            event_id=row.event_id,
+            plate_text=row.plate_text,
+            registration_status=row.registration_status,
+            barrier_action=row.barrier_action,
+            barrier_reason=row.barrier_reason,
+            needs_verification=row.needs_verification,
+            verified_by=row.verified_by,
+            verified_at=row.verified_at,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+
+
+@app.post("/api/v1/barrier-actions/verify", response_model=BarrierActionOut)
+def verify_barrier_action(plate: str, actor: str, db: Session = Depends(get_db)) -> BarrierActionOut:
+    try:
+        row = crud.verify_latest_hold(db, plate, actor)
+    except crud.NotFoundError as exc:
+        raise HTTPException(status_code=404, detail="barrier_action_not_found") from exc
+    return BarrierActionOut(
+        id=row.id,
+        event_id=row.event_id,
+        plate_text=row.plate_text,
+        registration_status=row.registration_status,
+        barrier_action=row.barrier_action,
+        barrier_reason=row.barrier_reason,
+        needs_verification=row.needs_verification,
+        verified_by=row.verified_by,
+        verified_at=row.verified_at,
+        created_at=row.created_at,
+    )
 
 
 @app.get("/api/v1/stats/realtime", response_model=RealtimeStatOut)

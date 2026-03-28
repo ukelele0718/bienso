@@ -9,6 +9,8 @@ Direction = Literal["in", "out"]
 VehicleType = Literal["motorbike", "car"]
 OcrStatus = Literal["success", "partial", "failed"]
 TransactionType = Literal["init", "event_charge", "manual_adjust"]
+RegistrationStatus = Literal["registered", "temporary_registered", "unknown"]
+BarrierActionType = Literal["open", "hold"]
 
 
 class EventIn(BaseModel):
@@ -24,6 +26,10 @@ class EventIn(BaseModel):
 
 class EventOut(EventIn):
     id: str
+    registration_status: RegistrationStatus | None = None
+    barrier_action: BarrierActionType | None = None
+    barrier_reason: str | None = None
+    needs_verification: bool | None = None
 
 
 class EventQuery(BaseModel):
@@ -47,6 +53,7 @@ class PlateReadOut(BaseModel):
 class AccountOut(BaseModel):
     plate_text: str
     balance_vnd: int
+    registration_status: RegistrationStatus | None = None
 
 
 class TransactionOut(BaseModel):
@@ -56,6 +63,19 @@ class TransactionOut(BaseModel):
     amount_vnd: int
     balance_after_vnd: int
     type: TransactionType
+    created_at: datetime
+
+
+class BarrierActionOut(BaseModel):
+    id: str
+    event_id: str
+    plate_text: str | None
+    registration_status: RegistrationStatus
+    barrier_action: BarrierActionType
+    barrier_reason: str
+    needs_verification: bool
+    verified_by: str | None
+    verified_at: datetime | None
     created_at: datetime
 
 

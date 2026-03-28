@@ -69,7 +69,11 @@ def db_session(db_engine) -> Generator[Session, None, None]:
         db.close()
 
     with db_engine.begin() as conn:
-        conn.execute(text("TRUNCATE TABLE transactions, plate_reads, vehicle_events, accounts, cameras, audit_logs RESTART IDENTITY CASCADE;"))
+        conn.execute(
+            text(
+                "TRUNCATE TABLE barrier_actions, transactions, plate_reads, vehicle_events, accounts, cameras, audit_logs RESTART IDENTITY CASCADE;"
+            )
+        )
 
 
 @pytest.fixture()

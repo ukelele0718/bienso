@@ -20,9 +20,7 @@ class Camera(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
-    __table_args__ = (
-        CheckConstraint("gate_type IN ('student','staff')", name="ck_cameras_gate_type"),
-    )
+    __table_args__ = (CheckConstraint("gate_type IN ('student','staff')", name="ck_cameras_gate_type"),)
 
 
 class VehicleEvent(Base):
@@ -54,9 +52,7 @@ class PlateRead(Base):
     ocr_status: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
-    __table_args__ = (
-        CheckConstraint("ocr_status IN ('success','partial','failed')", name="ck_plate_reads_ocr_status"),
-    )
+    __table_args__ = (CheckConstraint("ocr_status IN ('success','partial','failed')", name="ck_plate_reads_ocr_status"),)
 
 
 class Account(Base):
@@ -65,8 +61,16 @@ class Account(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid4()))
     plate_text: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     balance_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
+    registration_status: Mapped[str] = mapped_column(String, nullable=False, default="temporary_registered")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint(
+            "registration_status IN ('registered','temporary_registered','unknown')",
+            name="ck_accounts_registration_status",
+        ),
+    )
 
 
 class Transaction(Base):
@@ -80,8 +84,29 @@ class Transaction(Base):
     type: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
+    __table_args__ = (CheckConstraint("type IN ('init','event_charge','manual_adjust')", name="ck_transactions_type"),)
+
+
+class BarrierAction(Base):
+    __tablename__ = "barrier_actions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid4()))
+    event_id: Mapped[str] = mapped_column(String, ForeignKey("vehicle_events.id", ondelete="CASCADE"), nullable=False)
+    plate_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    registration_status: Mapped[str] = mapped_column(String, nullable=False)
+    barrier_action: Mapped[str] = mapped_column(String, nullable=False)
+    barrier_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    needs_verification: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    verified_by: Mapped[str | None] = mapped_column(Text, nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
     __table_args__ = (
-        CheckConstraint("type IN ('init','event_charge','manual_adjust')", name="ck_transactions_type"),
+        CheckConstraint(
+            "registration_status IN ('registered','temporary_registered','unknown')",
+            name="ck_barrier_actions_registration_status",
+        ),
+        CheckConstraint("barrier_action IN ('open','hold')", name="ck_barrier_actions_action"),
     )
 
 
