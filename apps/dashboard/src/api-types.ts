@@ -16,6 +16,10 @@ export interface EventIn {
 
 export interface EventOut extends EventIn {
   id: string;
+  registration_status?: 'registered' | 'temporary_registered' | 'unknown' | null;
+  barrier_action?: 'open' | 'hold' | null;
+  barrier_reason?: string | null;
+  needs_verification?: boolean | null;
 }
 
 export interface PlateReadOut {
@@ -31,6 +35,7 @@ export interface PlateReadOut {
 export interface AccountOut {
   plate_text: string;
   balance_vnd: number;
+  registration_status?: 'registered' | 'temporary_registered' | 'unknown' | null;
 }
 
 export interface TransactionOut {
@@ -57,6 +62,19 @@ export interface TrafficStatOut {
 
 export interface OcrRateOut {
   success_rate: number;
+}
+
+export interface BarrierActionOut {
+  id: string;
+  event_id: string;
+  plate_text: string | null;
+  registration_status: 'registered' | 'temporary_registered' | 'unknown';
+  barrier_action: 'open' | 'hold';
+  barrier_reason: string;
+  needs_verification: boolean;
+  verified_by: string | null;
+  verified_at: string | null;
+  created_at: string;
 }
 
 export interface ErrorOut {
