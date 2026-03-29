@@ -182,7 +182,7 @@ def verify_latest_hold(db: Session, plate_text: str, actor: str) -> BarrierActio
         select(BarrierAction)
         .where(BarrierAction.plate_text == plate_text)
         .order_by(BarrierAction.created_at.desc())
-    ).scalar_one_or_none()
+    ).scalars().first()
     if row is None:
         raise NotFoundError
     if row.barrier_action != "hold":

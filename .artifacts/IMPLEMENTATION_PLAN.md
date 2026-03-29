@@ -50,11 +50,11 @@ Bổ sung nghiệp vụ tài chính:
 
 ### Checklist
 - [x] Tạo thư mục `data/raw`, `data/external`, `data/processed`.
-- [ ] Tải VNLP (repo + drive link trong README).
-- [ ] (Tùy chọn) Bổ sung Kaggle/Roboflow.
+- [x] Tải VNLP (repo + drive link trong README).
+- [x] (Tùy chọn) Bổ sung Kaggle/Roboflow.
 - [ ] Chuẩn hóa annotation về YOLO/COCO.
-- [ ] Tách train/val/test.
-- [ ] Lưu `dataset_manifest.json` (source URL, số mẫu, giấy phép/ghi chú sử dụng).
+- [x] Tách train/val/test.
+- [x] Lưu `dataset_manifest.json` (source URL, số mẫu, giấy phép/ghi chú sử dụng).
 
 ---
 
@@ -118,10 +118,10 @@ Bổ sung nghiệp vụ tài chính:
 ### Checklist
 - [x] Realtime in/out counters.
 - [x] Danh sách biển số gần nhất.
-- [ ] Tra cứu theo biển số + khoảng thời gian.
-- [ ] Biểu đồ lưu lượng giờ/ngày.
+- [x] Tra cứu theo biển số + khoảng thời gian.
+- [x] Biểu đồ lưu lượng giờ/ngày.
 - [x] Hiển thị OCR success rate.
-- [ ] Hiển thị balance hiện tại + lịch sử trừ tiền.
+- [x] Hiển thị balance hiện tại + lịch sử trừ tiền.
 
 ---
 
@@ -131,13 +131,13 @@ Bổ sung nghiệp vụ tài chính:
 - Báo cáo KPI + test report
 
 ### Checklist
-- [ ] End-to-end test 2 kịch bản cổng.
-- [ ] Verify luồng tài chính theo event.
-- [ ] Verify tra cứu theo biển số/time-range.
+- [x] End-to-end test 2 kịch bản cổng.
+- [x] Verify luồng tài chính theo event.
+- [x] Verify tra cứu theo biển số/time-range.
 - [ ] Type-check pass:
   - [ ] Python: `mypy/pyright`
-  - [ ] TypeScript: `tsc --noEmit`
-- [ ] Lint + integration tests pass.
+  - [x] TypeScript: `tsc --noEmit`
+- [x] Lint + integration tests pass.
 
 ---
 
@@ -166,22 +166,22 @@ Bổ sung nghiệp vụ tài chính:
 ---
 
 ## 4) Typed Quality Gate (bắt buộc)
-- [ ] 100% public function có type annotations.
-- [ ] API contracts typed bằng Pydantic + TS types.
-- [ ] Không merge nếu type-check fail.
+- [x] 100% public function có type annotations.
+- [x] API contracts typed bằng Pydantic + TS types.
+- [x] Không merge nếu type-check fail.
 
 ---
 
 ## 5) KPI nghiệm thu
-- [ ] End-to-end chạy ổn định 1 camera.
+- [x] End-to-end chạy ổn định 1 camera.
 - [ ] Sai số đếm trong ngưỡng mục tiêu.
 - [ ] OCR accuracy đạt mục tiêu prototype.
-- [ ] Rule 100,000 / -2,000 / cho phép âm chạy đúng toàn bộ test cases.
-- [ ] Dashboard search theo biển số + thời gian chạy đúng.
-- [ ] Rule thanh chắn hoạt động đúng:
-  - [ ] xe đã đăng ký vào: mở tự động
-  - [ ] xe lạ vào: tự động đăng ký tạm và mở
-  - [ ] xe đăng ký tạm ra: giữ chặn, yêu cầu xác thực, xác thực xong mới mở
+- [x] Rule 100,000 / -2,000 / cho phép âm chạy đúng toàn bộ test cases.
+- [x] Dashboard search theo biển số + thời gian chạy đúng.
+- [x] Rule thanh chắn hoạt động đúng:
+  - [x] xe đã đăng ký vào: mở tự động
+  - [x] xe lạ vào: tự động đăng ký tạm và mở
+  - [x] xe đăng ký tạm ra: giữ chặn, yêu cầu xác thực, xác thực xong mới mở
 
 ---
 
