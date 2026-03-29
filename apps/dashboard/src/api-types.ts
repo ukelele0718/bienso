@@ -80,3 +80,23 @@ export interface BarrierActionOut {
 export interface ErrorOut {
   detail: string;
 }
+
+// Seeded mode types
+export interface AccountListItem {
+  plate_text: string;
+  balance_vnd: number;
+  registration_status?: 'registered' | 'temporary_registered' | 'unknown' | null;
+}
+
+export interface AccountListResponse {
+  items: AccountListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AccountsSummaryResponse {
+  total_accounts: number;
+  registered_accounts: number;
+  temporary_registered_accounts: number;
+}

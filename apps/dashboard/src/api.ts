@@ -1,5 +1,7 @@
 import type {
+  AccountListResponse,
   AccountOut,
+  AccountsSummaryResponse,
   BarrierActionOut,
   EventOut,
   OcrRateOut,
@@ -63,7 +65,41 @@ export async function fetchTransactions(plateText: string): Promise<TransactionO
   return parseJson<TransactionOut[]>(res, 'Failed to fetch transactions');
 }
 
-export async function fetchBarrierActions(plateText: string): Promise<BarrierActionOut[]> {
-  const res = await fetch(`${BASE_URL}/api/v1/barrier-actions?plate=${encodeURIComponent(plateText)}`);
+export async function fetchBarrierActions(plateText?: string): Promise<BarrierActionOut[]> {
+  const query = plateText ? `?plate=${encodeURIComponent(plateText)}` : '';
+  const res = await fetch(`${BASE_URL}/api/v1/barrier-actions${query}`);
   return parseJson<BarrierActionOut[]>(res, 'Failed to fetch barrier actions');
+}
+
+// Seeded mode API functions
+export async function fetchAccounts(params?: {
+  plate?: string;
+  registration_status?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<AccountListResponse> {
+  const query = new URLSearchParams();
+  if (params?.plate) query.set('plate', params.plate);
+  if (params?.registration_status) query.set('registration_status', params.registration_status);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.page_size) query.set('page_size', String(params.page_size));
+
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  const res = await fetch(`${BASE_URL}/api/v1/accounts${suffix}`);
+  return parseJson<AccountListResponse>(res, 'Failed to fetch accounts');
+}
+
+export async function fetchAccountsSummary(): Promise<AccountsSummaryResponse> {
+  const res = await fetch(`${BASE_URL}/api/v1/accounts/summary`);
+  return parseJson<AccountsSummaryResponse>(res, 'Failed to fetch accounts summary');
+}
+
+export async function verifyBarrier(plate: string, actor: string): Promise<BarrierActionOut> {
+  const query = new URLSearchParams();
+  query.set('plate', plate);
+  query.set('actor', actor);
+  const res = await fetch(`${BASE_URL}/api/v1/barrier-actions/verify?${query.toString()}`, {
+    method: 'POST',
+  });
+  return parseJson<BarrierActionOut>(res, 'Failed to verify barrier action');
 }
