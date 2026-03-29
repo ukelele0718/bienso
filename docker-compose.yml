@@ -28,5 +28,22 @@ services:
     command: >
       /bin/sh -c "python scripts/run_migrations.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
+  mock_server:
+    build:
+      context: ./apps/mock_server
+    container_name: vehicle_lpr_mock_server
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./data/processed/vnlp_xe_may_sample10/images:/data/processed/vnlp_xe_may_sample10/images:ro
+    environment:
+      DATA_PATH: /data/processed/vnlp_xe_may_sample10/images
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8088/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
 volumes:
   vehicle_lpr_pgdata:

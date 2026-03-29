@@ -1,0 +1,143 @@
+{
+  "description": "Demo payloads for testing seeded mode flow",
+  "version": "1.0",
+  "test_camera": {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "name": "Demo Camera - Entry Gate",
+    "location": "Main Entrance"
+  },
+  "test_cases": [
+    {
+      "id": "test_registered_in",
+      "name": "Registered plate IN",
+      "description": "Test registered vehicle entering - should open barrier immediately",
+      "setup_required": {
+        "create_registered_account": true,
+        "plate_text": "29A12345",
+        "initial_balance": 100000
+      },
+      "payload": {
+        "camera_id": "11111111-1111-1111-1111-111111111111",
+        "direction": "in",
+        "vehicle_type": "motorbike",
+        "track_id": "track-registered-in-001",
+        "plate_text": "29A12345",
+        "confidence": 0.95,
+        "snapshot_url": null
+      },
+      "expected": {
+        "status_code": 200,
+        "registration_status": "registered",
+        "barrier_action": "open",
+        "barrier_reason": "registered_vehicle_in",
+        "needs_verification": false
+      }
+    },
+    {
+      "id": "test_registered_out",
+      "name": "Registered plate OUT",
+      "description": "Test registered vehicle exiting - should open barrier (seeded mode rule)",
+      "setup_required": null,
+      "payload": {
+        "camera_id": "11111111-1111-1111-1111-111111111111",
+        "direction": "out",
+        "vehicle_type": "motorbike",
+        "track_id": "track-registered-out-001",
+        "plate_text": "29A12345",
+        "confidence": 0.95,
+        "snapshot_url": null
+      },
+      "expected": {
+        "status_code": 200,
+        "registration_status": "registered",
+        "barrier_action": "open",
+        "barrier_reason": "registered_vehicle_out",
+        "needs_verification": false
+      }
+    },
+    {
+      "id": "test_unknown_in",
+      "name": "Unknown plate IN",
+      "description": "Test unknown vehicle entering - should auto-register as temporary and open barrier",
+      "setup_required": null,
+      "payload": {
+        "camera_id": "11111111-1111-1111-1111-111111111111",
+        "direction": "in",
+        "vehicle_type": "motorbike",
+        "track_id": "track-unknown-in-001",
+        "plate_text": "99X99999",
+        "confidence": 0.92,
+        "snapshot_url": null
+      },
+      "expected": {
+        "status_code": 200,
+        "registration_status": "temporary_registered",
+        "barrier_action": "open",
+        "barrier_reason": "unknown_vehicle_auto_temporary_register",
+        "needs_verification": false
+      }
+    },
+    {
+      "id": "test_temporary_out",
+      "name": "Temporary plate OUT",
+      "description": "Test temporary vehicle exiting - should hold barrier for verification",
+      "setup_required": null,
+      "payload": {
+        "camera_id": "11111111-1111-1111-1111-111111111111",
+        "direction": "out",
+        "vehicle_type": "motorbike",
+        "track_id": "track-temporary-out-001",
+        "plate_text": "99X99999",
+        "confidence": 0.92,
+        "snapshot_url": null
+      },
+      "expected": {
+        "status_code": 200,
+        "registration_status": "temporary_registered",
+        "barrier_action": "hold",
+        "barrier_reason": "temporary_vehicle_out_requires_verify",
+        "needs_verification": true
+      }
+    }
+  ],
+  "additional_scenarios": [
+    {
+      "id": "test_low_confidence",
+      "name": "Low confidence detection",
+      "description": "Test plate with low confidence score",
+      "payload": {
+        "camera_id": "11111111-1111-1111-1111-111111111111",
+        "direction": "in",
+        "vehicle_type": "car",
+        "track_id": "track-low-conf-001",
+        "plate_text": "30F56789",
+        "confidence": 0.45,
+        "snapshot_url": null
+      },
+      "expected": {
+        "status_code": 200,
+        "registration_status": "temporary_registered",
+        "barrier_action": "open"
+      }
+    },
+    {
+      "id": "test_car_vehicle_type",
+      "name": "Car vehicle type",
+      "description": "Test car vehicle type handling",
+      "payload": {
+        "camera_id": "11111111-1111-1111-1111-111111111111",
+        "direction": "in",
+        "vehicle_type": "car",
+        "track_id": "track-car-001",
+        "plate_text": "51G12345",
+        "confidence": 0.88,
+        "snapshot_url": null
+      },
+      "expected": {
+        "status_code": 200,
+        "registration_status": "temporary_registered",
+        "barrier_action": "open"
+      }
+    }
+  ]
+}
