@@ -14,7 +14,7 @@ dist/
 coverage/
 
 # Data artifacts
-data/external/
+data/
 *.zip
 
 # OS
