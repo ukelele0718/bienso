@@ -1,62 +1,72 @@
-# Task checklist - VNLP seeded plates -> database -> backend -> dashboard
+# Task checklist - VNLP seeded backend dashboard
 
 Ngay: 2026-03-29
 
-## Chuan bi du lieu seed & schema
-- [x] Xac dinh duoc rang filename VNLP chua chuoi bien so.
-- [x] Xac dinh duoc rang `list_two_rows_label_xe_may.txt` co the dung de rut bien so ma khong can OCR.
-- [x] Thong ke nhanh tap list: `5593` dong, `3227` bien so unique sau normalize upper-case.
-- [x] Xac dinh schema hien tai da co `accounts`, `transactions`, `vehicle_events`, `plate_reads`, `barrier_actions`.
-- [ ] Chot contract `registered_plates_seed.csv`.
-- [ ] Chot rule normalize bien so duy nhat cho toan he thong.
-- [ ] Chot policy dedupe khi cung 1 bien so xuat hien nhieu lan.
+## Tai lieu va pham vi
+- [x] Tao `PRD.md` rieng cho seeded mode.
+- [x] Tao `IMPLEMENTATION_PLAN.md` rieng cho seeded mode.
+- [x] Tao `API_CONTRACT.md` tuong ung `.artifacts`.
+- [x] Tao `DB_SCHEMA.md` tuong ung `.artifacts`.
+- [x] Tao `DASHBOARD_WIREFRAME.md` tuong ung `.artifacts`.
+- [x] Tao `TEST_PLAN.md` tuong ung `.artifacts`.
+- [x] Tao `BASELINE_EVALUATION_REPORT.md` tuong ung `.artifacts`.
+- [x] Tao `ARTIFACT_MERGE_MAP.md` de huong dan merge nguoc ve `.artifacts`.
+- [x] Xac dinh ro phase nay khong phu thuoc OCR/train/model that.
+- [x] Xac dinh ro dau vao la `plate_text` da co san.
 
-## Seed file va import policy
+## Chuan bi du lieu seed
+- [x] Xac dinh filename VNLP chua chuoi bien so.
+- [x] Xac dinh `list_two_rows_label_xe_may.txt` co the dung de rut bien so ma khong can OCR.
+- [x] Thong ke nhanh file list: `5593` dong, `3227` bien so unique sau normalize upper-case.
+- [ ] Chot contract `registered_plates_seed.csv`.
 - [ ] Chot cac cot bat buoc: `plate_text`, `source`, `seed_group`.
 - [ ] Chot cac cot nen co: `vehicle_type`, `note`.
-- [ ] Quyet dinh import theo kieu `upsert` hay `skip-if-exists`.
-- [ ] Quyet dinh import lai cung `seed_group` thi xu ly the nao.
-- [ ] Quyet dinh account moi seed vao se co `registration_status=registered`.
-- [ ] Quyet dinh account moi seed vao se co `balance_vnd=100000`.
-- [ ] Quyet dinh co tao `init transaction` cho moi account moi hay khong.
+- [ ] Chot rule normalize bien so duy nhat.
+- [ ] Chot policy dedupe trong cung seed batch.
+- [ ] Tao `registered_plates_seed.csv`.
+- [ ] Tao `registered_plates_seed_summary.json`.
 
-## Logic nghiep vu barrier va registration
-- [x] Xac dinh logic hien tai da co nhanh `registered + in`.
-- [x] Xac dinh logic hien tai da co nhanh `temporary_registered + in`.
-- [x] Xac dinh logic hien tai da co nhanh `temporary_registered + out`.
-- [ ] Chot rule cho nhanh `registered + out`.
-- [ ] Review lai y nghia `unknown` trong luong seed plates.
-- [ ] Dam bao bien so trong seed khong bi tao lai thanh `temporary_registered`.
-- [ ] Chot rule cho bien so khong co trong seed khi di vao cong.
-- [ ] Chot rule cho bien so khong co trong seed khi di ra cong.
-
-## Import script / admin flow
-- [ ] Tao script import local cho `registered_plates_seed.csv`.
+## Import script vao database
+- [ ] Tao script import local/CLI.
 - [ ] Script phai normalize bien so truoc khi ghi DB.
 - [ ] Script phai dedupe truoc khi import.
-- [ ] Script phai sinh summary: `imported / skipped / invalid`.
-- [ ] Script phai idempotent o muc toi thieu.
+- [ ] Script phai upsert theo `plate_text`.
 - [ ] Script phai tao `Account` moi cho plate chua ton tai.
+- [ ] Script phai gan `registration_status=registered` cho account moi.
+- [ ] Script phai gan `balance_vnd=100000` cho account moi.
 - [ ] Script phai tao `Transaction(type='init')` cho account moi.
-- [ ] Script phai bo qua hoac cap nhat hop ly neu account da ton tai.
+- [ ] Script phai sinh summary: `imported / skipped / invalid`.
+- [ ] Script phai idempotent o muc MVP.
+
+## Logic nghiep vu backend
+- [x] Xac dinh logic hien tai da co `registered + in`.
+- [x] Xac dinh logic hien tai da co `temporary_registered + in`.
+- [x] Xac dinh logic hien tai da co `temporary_registered + out`.
+- [ ] Sua rule cho `registered + out -> open`.
+- [ ] Review lai y nghia `unknown` trong seeded mode.
+- [ ] Dam bao plate trong seed khong bi tao lai thanh `temporary_registered`.
+- [ ] Dam bao unknown plate `in` van tao `temporary_registered`.
+- [ ] Dam bao temporary plate `out` van `hold`.
+- [ ] Dam bao verify hold van chay dung.
 
 ## Backend API
 - [ ] Them `GET /api/v1/accounts` co search + filter + pagination.
 - [ ] Them `GET /api/v1/accounts/summary`.
+- [ ] Dam bao `GET /api/v1/accounts/{plate_text}` dung voi account seed.
+- [ ] Dam bao `GET /api/v1/accounts/{plate_text}/transactions` hien dung `init transaction`.
+- [ ] Dam bao `GET /api/v1/barrier-actions?plate=...` dung voi seeded flow.
+- [ ] Dam bao `POST /api/v1/barrier-actions/verify` chay dung.
 - [ ] Xem xet `POST /api/v1/accounts/{plate}/mark-registered`.
 - [ ] Xem xet `POST /api/v1/accounts/{plate}/adjust-balance`.
-- [ ] Neu can, them API ho tro import preview hoac import summary.
-- [ ] Dam bao `GET /api/v1/accounts/{plate_text}` van dung tot voi account seed.
-- [ ] Dam bao `GET /api/v1/accounts/{plate_text}/transactions` hien dung `init transaction`.
 
 ## Backend test
 - [ ] Test import plate moi -> tao account + init transaction.
 - [ ] Test import duplicate -> khong tao duplicate account.
-- [ ] Test event voi bien so trong seed, huong `in`.
-- [ ] Test event voi bien so trong seed, huong `out`.
-- [ ] Test event voi bien so ngoai seed, huong `in`.
-- [ ] Test event voi bien so ngoai seed, huong `out`.
-- [ ] Test verify hold van chay dung cho xe tam.
+- [ ] Test registered plate `in`.
+- [ ] Test registered plate `out`.
+- [ ] Test unknown plate `in`.
+- [ ] Test temporary plate `out`.
+- [ ] Test verify hold van chay dung.
 
 ## Dashboard
 - [ ] Them man hinh danh sach account / bien so.
@@ -65,28 +75,41 @@ Ngay: 2026-03-29
 - [ ] Them trang chi tiet account.
 - [ ] Hien so du hien tai.
 - [ ] Hien lich su giao dich.
-- [ ] Hien lich su event va barrier action lien quan.
-- [ ] Them khu vuc verify queue cho cac barrier action dang hold.
-- [ ] Them tong quan so luong `registered / temporary_registered / total`.
+- [ ] Hien lich su event lien quan.
+- [ ] Hien barrier action lien quan.
+- [ ] Them verify queue cho barrier hold.
+- [ ] Them tong quan `registered / temporary_registered / total`.
 
 ## Demo flow gia lap
-- [ ] Chuan bi 1 tap plate da seed de demo.
-- [ ] Chuan bi payload event gia lap cho plate da seed di `in`.
-- [ ] Chuan bi payload event gia lap cho plate da seed di `out`.
-- [ ] Chuan bi payload event gia lap cho plate chua seed di `in`.
-- [ ] Chuan bi payload event gia lap cho plate tam di `out`.
+- [ ] Chuan bi tap plate da seed de demo.
+- [ ] Chuan bi payload event cho registered plate `in`.
+- [ ] Chuan bi payload event cho registered plate `out`.
+- [ ] Chuan bi payload event cho unknown plate `in`.
+- [ ] Chuan bi payload event cho temporary plate `out`.
 - [ ] Xac nhan dashboard hien dung sau moi kich ban.
+- [ ] Xac nhan transaction va barrier action dung theo rule.
 
 ## Provenance va audit (de sau neu can)
-- [ ] Can nhac them metadata import: `source`, `seed_group`, `imported_at`.
-- [ ] Can nhac them lich su import batch.
-- [ ] Can nhac them man hinh dashboard xem thong tin provenance.
+- [ ] Can nhac them `source`, `seed_group`, `imported_at` vao schema.
+- [ ] Can nhac bang `import_batches`.
+- [ ] Can nhac dashboard import summary.
+
+## Merge prep ve `.artifacts`
+- [x] Giu cung ten file voi `.artifacts` cho cac tai lieu cot loi.
+- [x] Giu ket cau section gan voi `.artifacts`.
+- [ ] So khop lai `PRD.md` seeded mode voi `PRD.md` goc truoc khi merge.
+- [ ] So khop lai `IMPLEMENTATION_PLAN.md` seeded mode voi plan goc truoc khi merge.
+- [ ] So khop lai `API_CONTRACT.md` seeded mode voi contract goc truoc khi merge.
+- [ ] So khop lai `DB_SCHEMA.md` seeded mode voi schema goc truoc khi merge.
+- [ ] So khop lai `TEST_PLAN.md` seeded mode voi test plan goc truoc khi merge.
+- [ ] Chot chien luoc giu `AI-first path` va `seeded-first path` song song trong `.artifacts`.
 
 ## Kiem thu cuoi
 - [ ] Import seed chay duoc tu dau den cuoi.
 - [ ] Khong tao duplicate account khi import lai.
-- [ ] Luong `registered` va `temporary_registered` phan biet ro rang.
-- [ ] Barrier action phu hop rule da chot.
-- [ ] Dashboard tra cuu va verify duoc.
-- [ ] Co the demo luong nghiep vu ma khong can AI/OCR that.
+- [ ] Registered plate `in/out` deu di dung nhanh `open`.
+- [ ] Unknown plate `in` tao duoc `temporary_registered`.
+- [ ] Temporary plate `out` bi `hold` va verify duoc.
+- [ ] Dashboard tra cuu duoc bien so, balance, transactions, barrier history.
+- [ ] Demo duoc luong nghiep vu ma khong can AI/OCR that.
 
