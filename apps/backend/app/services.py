@@ -19,6 +19,13 @@ def decide_barrier(registration_status: str, direction: str) -> BarrierDecision:
             barrier_reason="registered_vehicle_in",
             needs_verification=False,
         )
+    if registration_status == "registered" and direction == "out":
+        return BarrierDecision(
+            registration_status=registration_status,
+            barrier_action="open",
+            barrier_reason="registered_vehicle_out",
+            needs_verification=False,
+        )
     if registration_status == "temporary_registered" and direction == "in":
         return BarrierDecision(
             registration_status=registration_status,

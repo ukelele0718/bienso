@@ -248,3 +248,42 @@ def get_traffic_stats(db: Session, group_by: str) -> list[dict]:
     ).all()
 
     return [{"bucket": r.bucket, "total_in": int(r.total_in or 0), "total_out": int(r.total_out or 0)} for r in rows]
+
+
+def list_accounts(
+    db: Session,
+    plate: str | None,
+    registration_status: str | None,
+    page: int,
+    page_size: int,
+) -> tuple[list[Account], int]:
+    stmt = select(Account)
+    if plate:
+        stmt = stmt.where(Account.plate_text.ilike(f"%{plate}%"))
+    if registration_status:
+        stmt = stmt.where(Account.registration_status == registration_status)
+
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total = db.execute(count_stmt).scalar_one()
+
+    offset = (page - 1) * page_size
+    stmt = stmt.order_by(Account.created_at.desc()).offset(offset).limit(page_size)
+    accounts = list(db.execute(stmt).scalars().all())
+
+    return accounts, total
+
+
+def get_accounts_summary(db: Session) -> dict:
+    total = db.execute(select(func.count()).select_from(Account)).scalar_one()
+    registered = db.execute(
+        select(func.count()).select_from(Account).where(Account.registration_status == "registered")
+    ).scalar_one()
+    temporary_registered = db.execute(
+        select(func.count()).select_from(Account).where(Account.registration_status == "temporary_registered")
+    ).scalar_one()
+
+    return {
+        "total_accounts": total,
+        "registered_accounts": registered,
+        "temporary_registered_accounts": temporary_registered,
+    }

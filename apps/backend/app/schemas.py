@@ -97,3 +97,22 @@ class OcrRateOut(BaseModel):
 
 class ErrorOut(BaseModel):
     detail: str
+
+
+class AccountListItem(BaseModel):
+    plate_text: str
+    balance_vnd: int
+    registration_status: RegistrationStatus | None = None
+
+
+class AccountListResponse(BaseModel):
+    items: list[AccountListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class AccountsSummaryResponse(BaseModel):
+    total_accounts: int
+    registered_accounts: int
+    temporary_registered_accounts: int

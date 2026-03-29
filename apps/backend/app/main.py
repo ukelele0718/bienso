@@ -9,7 +9,10 @@ from sqlalchemy.orm import Session
 from . import crud
 from .db import get_db
 from .schemas import (
+    AccountListItem,
+    AccountListResponse,
     AccountOut,
+    AccountsSummaryResponse,
     BarrierActionOut,
     ErrorOut,
     EventIn,
@@ -77,6 +80,36 @@ def list_events(
             )
         )
     return result
+
+
+@app.get("/api/v1/accounts", response_model=AccountListResponse)
+def list_accounts(
+    plate: str | None = Query(default=None),
+    registration_status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> AccountListResponse:
+    accounts, total = crud.list_accounts(db, plate, registration_status, page, page_size)
+    return AccountListResponse(
+        items=[
+            AccountListItem(
+                plate_text=acc.plate_text,
+                balance_vnd=acc.balance_vnd,
+                registration_status=acc.registration_status,
+            )
+            for acc in accounts
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@app.get("/api/v1/accounts/summary", response_model=AccountsSummaryResponse)
+def get_accounts_summary(db: Session = Depends(get_db)) -> AccountsSummaryResponse:
+    summary = crud.get_accounts_summary(db)
+    return AccountsSummaryResponse(**summary)
 
 
 @app.get("/api/v1/accounts/{plate_text}", response_model=AccountOut)
