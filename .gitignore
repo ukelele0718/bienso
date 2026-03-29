@@ -5,6 +5,8 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+**/pytest-cache-files-*/
+*.db
 
 # Node
 node_modules/
@@ -23,6 +25,8 @@ Thumbs.db
 .tmp/
 .artifacts/
 .cursor/
+runs/
+yolov8n.pt
 
 # Local review workspace
 project_review/
