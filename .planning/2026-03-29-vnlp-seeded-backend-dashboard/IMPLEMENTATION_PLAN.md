@@ -52,10 +52,10 @@ Suy ra:
 - [x] Khong phu thuoc OCR that
 - [x] Khong phu thuoc detector that
 - [x] Khong phu thuoc runtime camera that
-- [ ] Chot contract `registered_plates_seed.csv`
-- [ ] Chot rule normalize bien so duy nhat
-- [ ] Chot rule `registered + out -> open`
-- [ ] Chot policy import lai seed batch
+- [x] Chot contract `registered_plates_seed.csv`
+- [x] Chot rule normalize bien so duy nhat
+- [x] Chot rule `registered + out -> open`
+- [x] Chot policy import lai seed batch
 
 ---
 
@@ -70,10 +70,10 @@ Suy ra:
 ### Checklist
 - [x] Chot pham vi "khong AI that"
 - [x] Chot nguon seed tu VNLP filename list
-- [ ] Chot cot bat buoc: `plate_text`, `source`, `seed_group`
-- [ ] Chot cot nen co: `vehicle_type`, `note`
-- [ ] Chot rule upper-case / bo separator / bo space
-- [ ] Chot policy duplicate plate trong cung seed
+- [x] Chot cot bat buoc: `plate_text`, `source`, `seed_group`
+- [x] Chot cot nen co: `vehicle_type`, `note`
+- [x] Chot rule upper-case / bo separator / bo space
+- [x] Chot policy duplicate plate trong cung seed
 
 ### Thoi gian uoc tinh
 - `0.5 ngay`
@@ -87,14 +87,14 @@ Suy ra:
 - report duplicate / invalid / normalized
 
 ### Checklist
-- [ ] Doc file list VNLP
-- [ ] Parse `plate_text` tu filename
-- [ ] Normalize bien so
-- [ ] Dedupe theo `plate_text`
-- [ ] Gan `source=vnlp_two_rows_xe_may`
-- [ ] Gan `seed_group`
-- [ ] Xuat file CSV seed
-- [ ] Xuat file summary de audit
+- [x] Doc file list VNLP
+- [x] Parse `plate_text` tu filename
+- [x] Normalize bien so
+- [x] Dedupe theo `plate_text`
+- [x] Gan `source=vnlp_two_rows_xe_may`
+- [x] Gan `seed_group`
+- [x] Xuat file CSV seed
+- [x] Xuat file summary de audit
 
 ### Thoi gian uoc tinh
 - `0.5 ngay`
@@ -108,20 +108,20 @@ Suy ra:
 - du lieu `accounts` + `transactions` duoc seed
 
 ### Checklist
-- [ ] Tao script import local
-- [ ] Input: `registered_plates_seed.csv`
-- [ ] Upsert theo `plate_text`
-- [ ] Account moi:
-  - [ ] `registration_status=registered`
-  - [ ] `balance_vnd=100000`
-  - [ ] sinh `Transaction(type='init')`
-- [ ] Account da ton tai:
-  - [ ] skip hoac update theo policy da chot
-- [ ] In summary:
-  - [ ] imported
-  - [ ] skipped
-  - [ ] invalid
-- [ ] Dam bao import idempotent o muc MVP
+- [x] Tao script import local
+- [x] Input: `registered_plates_seed.csv`
+- [x] Upsert theo `plate_text`
+- [x] Account moi:
+  - [x] `registration_status=registered`
+  - [x] `balance_vnd=100000`
+  - [x] sinh `Transaction(type='init')`
+- [x] Account da ton tai:
+  - [x] skip hoac update theo policy da chot
+- [x] In summary:
+  - [x] imported
+  - [x] skipped
+  - [x] invalid
+- [x] Dam bao import idempotent o muc MVP
 
 ### Thoi gian uoc tinh
 - `0.5-1 ngay`
@@ -134,18 +134,18 @@ Suy ra:
 - test case cho 4 nhanh chinh
 
 ### Checklist
-- [ ] Bo sung rule `registered + out -> open`
-- [ ] Review lai y nghia `unknown`
-- [ ] Dam bao seed plate khong bi tao lai thanh `temporary_registered`
-- [ ] Dam bao unknown plate `in` van tao `temporary_registered`
-- [ ] Dam bao `temporary_registered + out -> hold`
-- [ ] Dam bao verify hold van mo duoc barrier
+- [x] Bo sung rule `registered + out -> open`
+- [x] Review lai y nghia `unknown`
+- [x] Dam bao seed plate khong bi tao lai thanh `temporary_registered`
+- [x] Dam bao unknown plate `in` van tao `temporary_registered`
+- [x] Dam bao `temporary_registered + out -> hold`
+- [x] Dam bao verify hold van mo duoc barrier
 
 ### Test case bat buoc
-- [ ] registered plate + in
-- [ ] registered plate + out
-- [ ] unknown plate + in
-- [ ] temporary_registered plate + out
+- [x] registered plate + in
+- [x] registered plate + out
+- [x] unknown plate + in
+- [x] temporary_registered plate + out
 
 ### Thoi gian uoc tinh
 - `1 ngay`
@@ -158,17 +158,17 @@ Suy ra:
 - API list/search/summary account
 
 ### Checklist
-- [ ] `GET /api/v1/accounts`
-  - [ ] search theo plate
-  - [ ] filter theo `registration_status`
-  - [ ] pagination
-- [ ] `GET /api/v1/accounts/summary`
-- [ ] `GET /api/v1/accounts/{plate}`
-- [ ] `GET /api/v1/accounts/{plate}/transactions`
-- [ ] `GET /api/v1/barrier-actions?plate=...`
-- [ ] `POST /api/v1/barrier-actions/verify`
-- [ ] Can nhac `POST /api/v1/accounts/{plate}/mark-registered`
-- [ ] Can nhac `POST /api/v1/accounts/{plate}/adjust-balance`
+- [x] `GET /api/v1/accounts`
+  - [x] search theo plate
+  - [x] filter theo `registration_status`
+  - [x] pagination
+- [x] `GET /api/v1/accounts/summary`
+- [x] `GET /api/v1/accounts/{plate}`
+- [x] `GET /api/v1/accounts/{plate}/transactions`
+- [x] `GET /api/v1/barrier-actions?plate=...`
+- [x] `POST /api/v1/barrier-actions/verify`
+- [x] Can nhac `POST /api/v1/accounts/{plate}/mark-registered`
+- [x] Can nhac `POST /api/v1/accounts/{plate}/adjust-balance`
 
 ### Thoi gian uoc tinh
 - `1-1.5 ngay`
@@ -181,20 +181,20 @@ Suy ra:
 - operator flow ro rang
 
 ### Checklist
-- [ ] danh sach account / bien so
-- [ ] o search bien so
-- [ ] filter `registered / temporary_registered`
-- [ ] trang chi tiet account
-- [ ] hien so du hien tai
-- [ ] hien lich su giao dich
-- [ ] hien lich su event
-- [ ] hien barrier action lien quan
-- [ ] verify queue cho barrier hold
-- [ ] tong quan so luong:
-  - [ ] total accounts
-  - [ ] registered
-  - [ ] temporary_registered
-  - [ ] event in/out
+- [x] danh sach account / bien so
+- [x] o search bien so
+- [x] filter `registered / temporary_registered`
+- [x] trang chi tiet account
+- [x] hien so du hien tai
+- [x] hien lich su giao dich
+- [x] hien lich su event
+- [x] hien barrier action lien quan
+- [x] verify queue cho barrier hold
+- [x] tong quan so luong:
+  - [x] total accounts
+  - [x] registered
+  - [x] temporary_registered
+  - [x] event in/out
 
 ### Thoi gian uoc tinh
 - `1-2 ngay`
@@ -208,14 +208,14 @@ Suy ra:
 - checklist nghiem thu pass
 
 ### Checklist
-- [ ] tao payload event gia lap cho registered plate in
-- [ ] tao payload event gia lap cho registered plate out
-- [ ] tao payload event gia lap cho unknown plate in
-- [ ] tao payload event gia lap cho temporary plate out
-- [ ] verify balance thay doi dung
-- [ ] verify barrier action dung
-- [ ] verify dashboard hien thi dung
-- [ ] verify search + history + verify queue
+- [x] tao payload event gia lap cho registered plate in
+- [x] tao payload event gia lap cho registered plate out
+- [x] tao payload event gia lap cho unknown plate in
+- [x] tao payload event gia lap cho temporary plate out
+- [x] verify balance thay doi dung
+- [x] verify barrier action dung
+- [x] verify dashboard hien thi dung
+- [x] verify search + history + verify queue
 
 ### Thoi gian uoc tinh
 - `0.5-1 ngay`
@@ -279,24 +279,24 @@ Huong giai quyet:
 ## 4) Typed Quality Gate
 - [x] API contracts typed bang Pydantic
 - [x] Dashboard typed bang TypeScript
-- [ ] Moi API moi deu co schema output ro rang
-- [ ] Moi script import moi deu co type annotations co ban
-- [ ] Khong merge neu API va dashboard lech contract
+- [x] Moi API moi deu co schema output ro rang
+- [x] Moi script import moi deu co type annotations co ban
+- [x] Khong merge neu API va dashboard lech contract
 
 ---
 
 ## 5) KPI nghiem thu cho seeded mode
-- [ ] Import duoc seed batch vao DB ma khong duplicate account
-- [ ] Account moi co `registration_status=registered`
-- [ ] Account moi co `balance_vnd=100000` va `init transaction`
-- [ ] Registered plate `in` -> barrier `open`
-- [ ] Registered plate `out` -> barrier `open`
-- [ ] Unknown plate `in` -> tao `temporary_registered` va `open`
-- [ ] Temporary plate `out` -> `hold` va verify duoc
-- [ ] Dashboard search theo bien so chay dung
-- [ ] Dashboard xem duoc balance va transactions
-- [ ] Dashboard xem duoc barrier verify queue
-- [ ] Demo duoc end-to-end ma khong can AI/OCR that
+- [x] Import duoc seed batch vao DB ma khong duplicate account
+- [x] Account moi co `registration_status=registered`
+- [x] Account moi co `balance_vnd=100000` va `init transaction`
+- [x] Registered plate `in` -> barrier `open`
+- [x] Registered plate `out` -> barrier `open`
+- [x] Unknown plate `in` -> tao `temporary_registered` va `open`
+- [x] Temporary plate `out` -> `hold` va verify duoc
+- [x] Dashboard search theo bien so chay dung
+- [x] Dashboard xem duoc balance va transactions
+- [x] Dashboard xem duoc barrier verify queue
+- [x] Demo duoc end-to-end ma khong can AI/OCR that
 
 ---
 

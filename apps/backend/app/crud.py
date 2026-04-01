@@ -167,14 +167,11 @@ def list_transactions(db: Session, account_id: str) -> list[Transaction]:
     )
 
 
-def list_barrier_actions_by_plate(db: Session, plate_text: str) -> list[BarrierAction]:
-    return list(
-        db.execute(
-            select(BarrierAction).where(BarrierAction.plate_text == plate_text).order_by(BarrierAction.created_at.asc())
-        )
-        .scalars()
-        .all()
-    )
+def list_barrier_actions(db: Session, plate_text: str | None = None) -> list[BarrierAction]:
+    stmt = select(BarrierAction)
+    if plate_text:
+        stmt = stmt.where(BarrierAction.plate_text == plate_text)
+    return list(db.execute(stmt.order_by(BarrierAction.created_at.asc())).scalars().all())
 
 
 def verify_latest_hold(db: Session, plate_text: str, actor: str) -> BarrierAction:

@@ -147,8 +147,8 @@ def list_transactions(plate_text: str, db: Session = Depends(get_db)) -> List[Tr
 
 
 @app.get("/api/v1/barrier-actions", response_model=List[BarrierActionOut])
-def list_barrier_actions(plate: str = Query(...), db: Session = Depends(get_db)) -> List[BarrierActionOut]:
-    rows = crud.list_barrier_actions_by_plate(db, plate)
+def list_barrier_actions(plate: str | None = Query(default=None), db: Session = Depends(get_db)) -> List[BarrierActionOut]:
+    rows = crud.list_barrier_actions(db, plate)
     return [
         BarrierActionOut(
             id=row.id,
