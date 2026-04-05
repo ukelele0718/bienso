@@ -27,6 +27,7 @@ Thumbs.db
 .cursor/
 runs/
 yolov8n.pt
+.agents/
 
 # Local review workspace
 project_review/
