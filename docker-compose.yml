@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:16
@@ -25,8 +23,14 @@ services:
       - "8000:8000"
     depends_on:
       - postgres
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
     command: >
-      /bin/sh -c "python scripts/run_migrations.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      /bin/sh -c "PYTHONPATH=/app python scripts/run_migrations.py && PYTHONPATH=/app uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   mock_server:
     build:

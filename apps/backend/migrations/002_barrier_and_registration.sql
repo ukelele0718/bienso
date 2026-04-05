@@ -2,9 +2,20 @@
 -- Add registration status and barrier action logs
 
 ALTER TABLE accounts
-    ADD COLUMN IF NOT EXISTS registration_status TEXT NOT NULL DEFAULT 'temporary_registered',
-    ADD CONSTRAINT IF NOT EXISTS ck_accounts_registration_status
-        CHECK (registration_status IN ('registered','temporary_registered','unknown'));
+    ADD COLUMN IF NOT EXISTS registration_status TEXT NOT NULL DEFAULT 'temporary_registered';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'ck_accounts_registration_status'
+    ) THEN
+        ALTER TABLE accounts
+            ADD CONSTRAINT ck_accounts_registration_status
+            CHECK (registration_status IN ('registered','temporary_registered','unknown'));
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS barrier_actions (
     id UUID PRIMARY KEY,
