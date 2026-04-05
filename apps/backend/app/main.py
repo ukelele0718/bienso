@@ -13,10 +13,15 @@ from .schemas import (
     AccountListResponse,
     AccountOut,
     AccountsSummaryResponse,
+    AdjustBalanceIn,
+    AdjustBalanceResponse,
     BarrierActionOut,
     ErrorOut,
     EventIn,
     EventOut,
+    ImportBatchesSummaryResponse,
+    ImportBatchOut,
+    MarkRegisteredResponse,
     OcrRateOut,
     RealtimeStatOut,
     TrafficStatOut,
@@ -32,8 +37,8 @@ def create_event(payload: EventIn, db: Session = Depends(get_db)) -> EventOut:
     plate_read = crud.get_event_plate_meta(db, event.id)
 
     return EventOut(
-        id=event.id,
-        camera_id=event.camera_id,
+        id=str(event.id),
+        camera_id=str(event.camera_id),
         timestamp=event.timestamp,
         direction=event.direction,
         vehicle_type=event.vehicle_type,
@@ -64,8 +69,8 @@ def list_events(
         barrier_action = crud.get_event_barrier_meta(db, e.id)
         result.append(
             EventOut(
-                id=e.id,
-                camera_id=e.camera_id,
+                id=str(e.id),
+                camera_id=str(e.camera_id),
                 timestamp=e.timestamp,
                 direction=e.direction,
                 vehicle_type=e.vehicle_type,
@@ -112,6 +117,32 @@ def get_accounts_summary(db: Session = Depends(get_db)) -> AccountsSummaryRespon
     return AccountsSummaryResponse(**summary)
 
 
+@app.get("/api/v1/import-batches", response_model=List[ImportBatchOut])
+def get_import_batches(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> List[ImportBatchOut]:
+    rows = crud.list_import_batches(db, limit=limit)
+    return [
+        ImportBatchOut(
+            id=row.id,
+            source=row.source,
+            seed_group=row.seed_group,
+            imported_count=row.imported_count,
+            skipped_count=row.skipped_count,
+            invalid_count=row.invalid_count,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+
+
+@app.get("/api/v1/import-batches/summary", response_model=ImportBatchesSummaryResponse)
+def get_import_batches_summary(db: Session = Depends(get_db)) -> ImportBatchesSummaryResponse:
+    summary = crud.get_import_batches_summary(db)
+    return ImportBatchesSummaryResponse(**summary)
+
+
 @app.get("/api/v1/accounts/{plate_text}", response_model=AccountOut)
 def get_account(plate_text: str, db: Session = Depends(get_db)) -> AccountOut:
     try:
@@ -144,6 +175,42 @@ def list_transactions(plate_text: str, db: Session = Depends(get_db)) -> List[Tr
         )
         for t in txs
     ]
+
+
+@app.post("/api/v1/accounts/{plate_text}/mark-registered", response_model=MarkRegisteredResponse)
+def mark_registered(plate_text: str, db: Session = Depends(get_db)) -> MarkRegisteredResponse:
+    try:
+        account = crud.mark_account_registered(db, plate_text)
+    except crud.NotFoundError as exc:
+        raise HTTPException(status_code=404, detail="account_not_found") from exc
+    return MarkRegisteredResponse(
+        plate_text=account.plate_text,
+        registration_status=account.registration_status,
+    )
+
+
+@app.post("/api/v1/accounts/{plate_text}/adjust-balance", response_model=AdjustBalanceResponse)
+def adjust_balance(
+    plate_text: str,
+    payload: AdjustBalanceIn,
+    db: Session = Depends(get_db),
+) -> AdjustBalanceResponse:
+    try:
+        account, tx = crud.adjust_account_balance(
+            db,
+            plate_text,
+            payload.amount_vnd,
+            actor=payload.actor,
+            reason=payload.reason,
+        )
+    except crud.NotFoundError as exc:
+        raise HTTPException(status_code=404, detail="account_not_found") from exc
+    return AdjustBalanceResponse(
+        plate_text=account.plate_text,
+        balance_vnd=account.balance_vnd,
+        delta_vnd=payload.amount_vnd,
+        transaction_id=tx.id,
+    )
 
 
 @app.get("/api/v1/barrier-actions", response_model=List[BarrierActionOut])

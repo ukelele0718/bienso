@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
+import re
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .models import Account, AuditLog, BarrierAction, PlateRead, Transaction, VehicleEvent
+from .models import Account, AuditLog, BarrierAction, Camera, ImportBatch, PlateRead, Transaction, VehicleEvent
 from .services import decide_barrier
 
 
@@ -15,10 +16,30 @@ class NotFoundError(Exception):
     pass
 
 
+def normalize_plate_text(plate_text: str) -> str:
+    normalized = re.sub(r"[^A-Za-z0-9]", "", plate_text or "").upper()
+    return normalized
+
+
 def create_event(db: Session, payload: dict) -> tuple[VehicleEvent, BarrierAction | None]:
+    camera_id = payload["camera_id"]
+    camera = db.execute(select(Camera).where(Camera.id == camera_id)).scalar_one_or_none()
+    if camera is None:
+        camera = Camera(
+            id=camera_id,
+            name=f"Auto camera {camera_id[:8]}",
+            gate_type="student",
+            location="auto_seeded_mode",
+            stream_url=None,
+            is_active=True,
+            created_at=datetime.now(UTC),
+        )
+        db.add(camera)
+        db.flush()
+
     event = VehicleEvent(
         id=str(uuid4()),
-        camera_id=payload["camera_id"],
+        camera_id=camera_id,
         timestamp=payload["timestamp"],
         direction=payload["direction"],
         vehicle_type=payload["vehicle_type"],
@@ -27,7 +48,8 @@ def create_event(db: Session, payload: dict) -> tuple[VehicleEvent, BarrierActio
     db.add(event)
     db.flush()
 
-    plate_text = payload.get("plate_text")
+    raw_plate_text = payload.get("plate_text")
+    plate_text = normalize_plate_text(raw_plate_text) if raw_plate_text else None
     plate_read = PlateRead(
         id=str(uuid4()),
         event_id=event.id,
@@ -50,8 +72,8 @@ def create_event(db: Session, payload: dict) -> tuple[VehicleEvent, BarrierActio
                 plate_text=plate_text,
                 balance_vnd=settings.initial_balance_vnd,
                 registration_status="temporary_registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
             db.add(account)
             db.flush()
@@ -102,7 +124,7 @@ def create_event(db: Session, payload: dict) -> tuple[VehicleEvent, BarrierActio
         )
 
         account.balance_vnd -= settings.charge_per_event_vnd
-        account.updated_at = datetime.utcnow()
+        account.updated_at = datetime.now(UTC)
         db.add(
             Transaction(
                 id=str(uuid4()),
@@ -140,7 +162,8 @@ def list_events(
     if vehicle_type:
         stmt = stmt.where(VehicleEvent.vehicle_type == vehicle_type)
     if plate:
-        stmt = stmt.join(PlateRead, PlateRead.event_id == VehicleEvent.id).where(PlateRead.plate_text == plate)
+        normalized_plate = normalize_plate_text(plate)
+        stmt = stmt.join(PlateRead, PlateRead.event_id == VehicleEvent.id).where(PlateRead.plate_text == normalized_plate)
     return list(db.execute(stmt.order_by(VehicleEvent.timestamp.desc())).scalars().all())
 
 
@@ -153,7 +176,8 @@ def get_event_barrier_meta(db: Session, event_id: str) -> BarrierAction | None:
 
 
 def get_account(db: Session, plate_text: str) -> Account:
-    account = db.execute(select(Account).where(Account.plate_text == plate_text)).scalar_one_or_none()
+    normalized_plate = normalize_plate_text(plate_text)
+    account = db.execute(select(Account).where(Account.plate_text == normalized_plate)).scalar_one_or_none()
     if account is None:
         raise NotFoundError
     return account
@@ -170,14 +194,16 @@ def list_transactions(db: Session, account_id: str) -> list[Transaction]:
 def list_barrier_actions(db: Session, plate_text: str | None = None) -> list[BarrierAction]:
     stmt = select(BarrierAction)
     if plate_text:
-        stmt = stmt.where(BarrierAction.plate_text == plate_text)
+        normalized_plate = normalize_plate_text(plate_text)
+        stmt = stmt.where(BarrierAction.plate_text == normalized_plate)
     return list(db.execute(stmt.order_by(BarrierAction.created_at.asc())).scalars().all())
 
 
 def verify_latest_hold(db: Session, plate_text: str, actor: str) -> BarrierAction:
+    normalized_plate = normalize_plate_text(plate_text)
     row = db.execute(
         select(BarrierAction)
-        .where(BarrierAction.plate_text == plate_text)
+        .where(BarrierAction.plate_text == normalized_plate)
         .order_by(BarrierAction.created_at.desc())
     ).scalars().first()
     if row is None:
@@ -188,7 +214,7 @@ def verify_latest_hold(db: Session, plate_text: str, actor: str) -> BarrierActio
     row.barrier_reason = "manual_verify_open"
     row.needs_verification = False
     row.verified_by = actor
-    row.verified_at = datetime.utcnow()
+    row.verified_at = datetime.now(UTC)
 
     db.add(
         AuditLog(
@@ -200,7 +226,7 @@ def verify_latest_hold(db: Session, plate_text: str, actor: str) -> BarrierActio
                 "event_id": row.event_id,
                 "result": "open",
             },
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
     )
 
@@ -256,7 +282,8 @@ def list_accounts(
 ) -> tuple[list[Account], int]:
     stmt = select(Account)
     if plate:
-        stmt = stmt.where(Account.plate_text.ilike(f"%{plate}%"))
+        normalized_plate = normalize_plate_text(plate)
+        stmt = stmt.where(Account.plate_text.ilike(f"%{normalized_plate}%"))
     if registration_status:
         stmt = stmt.where(Account.registration_status == registration_status)
 
@@ -284,3 +311,88 @@ def get_accounts_summary(db: Session) -> dict:
         "registered_accounts": registered,
         "temporary_registered_accounts": temporary_registered,
     }
+
+
+def list_import_batches(db: Session, limit: int = 20) -> list[ImportBatch]:
+    stmt = select(ImportBatch).order_by(ImportBatch.created_at.desc()).limit(limit)
+    return list(db.execute(stmt).scalars().all())
+
+
+def get_import_batches_summary(db: Session) -> dict:
+    total_batches = db.execute(select(func.count()).select_from(ImportBatch)).scalar_one()
+    sums = db.execute(
+        select(
+            func.coalesce(func.sum(ImportBatch.imported_count), 0),
+            func.coalesce(func.sum(ImportBatch.skipped_count), 0),
+            func.coalesce(func.sum(ImportBatch.invalid_count), 0),
+        )
+    ).one()
+
+    return {
+        "total_batches": int(total_batches or 0),
+        "total_imported": int(sums[0] or 0),
+        "total_skipped": int(sums[1] or 0),
+        "total_invalid": int(sums[2] or 0),
+    }
+
+
+def mark_account_registered(db: Session, plate_text: str) -> Account:
+    account = get_account(db, plate_text)
+    if account.registration_status != "registered":
+        account.registration_status = "registered"
+        account.updated_at = datetime.utcnow()
+        db.add(account)
+        db.add(
+            AuditLog(
+                id=str(uuid4()),
+                user_id=None,
+                action="account_mark_registered",
+                metadata_json={"plate_text": plate_text},
+                created_at=datetime.utcnow(),
+            )
+        )
+        db.commit()
+        db.refresh(account)
+    return account
+
+
+def adjust_account_balance(
+    db: Session,
+    plate_text: str,
+    amount_vnd: int,
+    actor: str | None = None,
+    reason: str | None = None,
+) -> tuple[Account, Transaction]:
+    account = get_account(db, plate_text)
+    account.balance_vnd += amount_vnd
+    account.updated_at = datetime.utcnow()
+
+    tx = Transaction(
+        id=str(uuid4()),
+        account_id=account.id,
+        event_id=None,
+        amount_vnd=amount_vnd,
+        balance_after_vnd=account.balance_vnd,
+        type="manual_adjust",
+        created_at=datetime.utcnow(),
+    )
+
+    db.add(account)
+    db.add(tx)
+    db.add(
+        AuditLog(
+            id=str(uuid4()),
+            user_id=actor,
+            action="account_adjust_balance",
+            metadata_json={
+                "plate_text": plate_text,
+                "amount_vnd": amount_vnd,
+                "reason": reason,
+            },
+            created_at=datetime.utcnow(),
+        )
+    )
+    db.commit()
+    db.refresh(account)
+    db.refresh(tx)
+    return account, tx

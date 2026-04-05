@@ -116,3 +116,38 @@ class AccountsSummaryResponse(BaseModel):
     total_accounts: int
     registered_accounts: int
     temporary_registered_accounts: int
+
+
+class ImportBatchOut(BaseModel):
+    id: str
+    source: str
+    seed_group: str | None = None
+    imported_count: int
+    skipped_count: int
+    invalid_count: int
+    created_at: datetime
+
+
+class ImportBatchesSummaryResponse(BaseModel):
+    total_batches: int
+    total_imported: int
+    total_skipped: int
+    total_invalid: int
+
+
+class MarkRegisteredResponse(BaseModel):
+    plate_text: str
+    registration_status: RegistrationStatus
+
+
+class AdjustBalanceIn(BaseModel):
+    amount_vnd: int
+    actor: str | None = None
+    reason: str | None = None
+
+
+class AdjustBalanceResponse(BaseModel):
+    plate_text: str
+    balance_vnd: int
+    delta_vnd: int
+    transaction_id: str

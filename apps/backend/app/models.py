@@ -62,6 +62,10 @@ class Account(Base):
     plate_text: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     balance_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
     registration_status: Mapped[str] = mapped_column(String, nullable=False, default="temporary_registered")
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    seed_group: Mapped[str | None] = mapped_column(Text, nullable=True)
+    imported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    import_batch_id: Mapped[str | None] = mapped_column(String, ForeignKey("import_batches.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
@@ -108,6 +112,18 @@ class BarrierAction(Base):
         ),
         CheckConstraint("barrier_action IN ('open','hold')", name="ck_barrier_actions_action"),
     )
+
+
+class ImportBatch(Base):
+    __tablename__ = "import_batches"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid4()))
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    seed_group: Mapped[str | None] = mapped_column(Text, nullable=True)
+    imported_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    skipped_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    invalid_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
 
 class AuditLog(Base):
