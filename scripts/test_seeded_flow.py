@@ -16,7 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -24,7 +24,7 @@ from uuid import uuid4
 try:
     import httpx
 except ImportError:
-    print("❌ httpx not installed. Run: pip install httpx")
+    print("[ERROR] httpx not installed. Run: pip install httpx")
     sys.exit(1)
 
 
@@ -44,6 +44,10 @@ BLUE = "\033[94m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
 
+OK_MARK = "[OK]"
+FAIL_MARK = "[FAIL]"
+WARN_MARK = "[WARN]"
+
 
 # =============================================================================
 # Utility Functions
@@ -53,7 +57,7 @@ BOLD = "\033[1m"
 def load_payloads() -> dict[str, Any]:
     """Load test payloads from JSON file."""
     if not PAYLOADS_FILE.exists():
-        print(f"{RED}✗ Payloads file not found: {PAYLOADS_FILE}{RESET}")
+        print(f"{RED}{FAIL_MARK} Payloads file not found: {PAYLOADS_FILE}{RESET}")
         sys.exit(1)
 
     with open(PAYLOADS_FILE) as f:
@@ -70,9 +74,9 @@ def print_header(text: str) -> None:
 def print_result(test_name: str, passed: bool, details: str = "") -> None:
     """Print test result with ✓ or ✗."""
     if passed:
-        print(f"  {GREEN}✓{RESET} {test_name}")
+        print(f"  {GREEN}{OK_MARK}{RESET} {test_name}")
     else:
-        print(f"  {RED}✗{RESET} {test_name}")
+        print(f"  {RED}{FAIL_MARK}{RESET} {test_name}")
     if details:
         print(f"    {YELLOW}→ {details}{RESET}")
 
@@ -83,98 +87,35 @@ def print_result(test_name: str, passed: bool, details: str = "") -> None:
 
 
 def ensure_camera_exists(client: httpx.Client, verbose: bool = False) -> bool:
-    """Ensure test camera exists in the system."""
-    camera_data = {
-        "id": TEST_CAMERA_ID,
-        "name": "Demo Test Camera",
-        "location": "Test Gate Entry",
-        "rtsp_url": "rtsp://localhost:8554/test",
-        "direction": "in",
-        "is_active": True,
-    }
-
-    try:
-        # Try to get existing camera
-        res = client.get(f"/api/v1/cameras/{TEST_CAMERA_ID}")
-        if res.status_code == 200:
-            if verbose:
-                print(f"  {GREEN}✓{RESET} Camera already exists")
-            return True
-    except httpx.RequestError:
-        pass
-
-    # Try to create camera
-    try:
-        res = client.post("/api/v1/cameras", json=camera_data)
-        if res.status_code in (200, 201):
-            if verbose:
-                print(f"  {GREEN}✓{RESET} Camera created successfully")
-            return True
-        elif res.status_code == 409:  # Conflict - already exists
-            if verbose:
-                print(f"  {GREEN}✓{RESET} Camera already exists (conflict)")
-            return True
-        else:
-            if verbose:
-                print(f"  {YELLOW}⚠{RESET} Camera creation returned {res.status_code}")
-            # Continue anyway - camera might not be required for events endpoint
-            return True
-    except httpx.RequestError as e:
-        print(f"  {RED}✗{RESET} Failed to setup camera: {e}")
-        return False
-
-
-def ensure_registered_account(
-    client: httpx.Client,
-    plate_text: str,
-    balance: int = 100000,
-    verbose: bool = False,
-) -> bool:
-    """Ensure a registered account exists for testing."""
-    # First check if account exists
-    try:
-        res = client.get(f"/api/v1/accounts/{plate_text}")
-        if res.status_code == 200:
-            account = res.json()
-            if account.get("registration_status") == "registered":
-                if verbose:
-                    print(f"  {GREEN}✓{RESET} Registered account exists: {plate_text}")
-                return True
-    except httpx.RequestError:
-        pass
-
-    # Try to create/update account via admin endpoint (if available)
-    account_data = {
-        "plate_text": plate_text,
-        "balance_vnd": balance,
-        "registration_status": "registered",
-    }
-
-    try:
-        # Try PUT first (update or create)
-        res = client.put(f"/api/v1/accounts/{plate_text}", json=account_data)
-        if res.status_code in (200, 201):
-            if verbose:
-                print(f"  {GREEN}✓{RESET} Registered account created: {plate_text}")
-            return True
-    except httpx.RequestError:
-        pass
-
-    try:
-        # Try POST to accounts endpoint
-        res = client.post("/api/v1/accounts", json=account_data)
-        if res.status_code in (200, 201):
-            if verbose:
-                print(f"  {GREEN}✓{RESET} Registered account created: {plate_text}")
-            return True
-    except httpx.RequestError:
-        pass
-
+    """Ensure test camera exists in the database for event FK."""
+    # Current backend does not expose camera endpoints.
+    # Assume migration/seed already contains the test camera used in payloads.
     if verbose:
-        print(f"  {YELLOW}⚠{RESET} Could not pre-create registered account: {plate_text}")
-        print(f"      Test may fail or create temporary_registered instead")
+        print(f"  {YELLOW}{WARN_MARK}{RESET} Camera API not available, using pre-seeded camera id")
+    return True
 
-    return False
+
+def pick_registered_plate(client: httpx.Client, verbose: bool = False) -> str | None:
+    """Get one registered plate from backend for deterministic registered-flow tests."""
+    try:
+        res = client.get(
+            "/api/v1/accounts",
+            params={"registration_status": "registered", "page": 1, "page_size": 1},
+        )
+        if res.status_code != 200:
+            return None
+
+        body = res.json()
+        items = body.get("items") or []
+        if not items:
+            return None
+
+        plate_text = items[0].get("plate_text")
+        if verbose and plate_text:
+            print(f"  {GREEN}{OK_MARK}{RESET} Using registered plate from DB: {plate_text}")
+        return plate_text
+    except httpx.RequestError:
+        return None
 
 
 # =============================================================================
@@ -197,7 +138,7 @@ def run_test(
     expected = test_case["expected"]
 
     # Add timestamp to payload
-    payload["timestamp"] = datetime.utcnow().isoformat()
+    payload["timestamp"] = datetime.now(UTC).isoformat()
 
     # Make unique track_id for each run
     base_track_id = payload.get("track_id", "track")
@@ -255,23 +196,23 @@ def run_all_tests(
     if only_test:
         test_cases = [tc for tc in test_cases if tc["id"] == only_test]
         if not test_cases:
-            print(f"{RED}✗ Test '{only_test}' not found{RESET}")
+            print(f"{RED}{FAIL_MARK} Test '{only_test}' not found{RESET}")
             return 0, 1
 
     passed = 0
     failed = 0
 
-    with httpx.Client(base_url=base_url, timeout=30.0) as client:
+    with httpx.Client(base_url=base_url, timeout=30.0, trust_env=False) as client:
         # Health check
         print_header("Connectivity Check")
         try:
             res = client.get("/health")
             if res.status_code == 200:
-                print(f"  {GREEN}✓{RESET} Backend is healthy at {base_url}")
+                print(f"  {GREEN}{OK_MARK}{RESET} Backend is healthy at {base_url}")
             else:
-                print(f"  {YELLOW}⚠{RESET} Health check returned {res.status_code}")
+                print(f"  {YELLOW}{WARN_MARK}{RESET} Health check returned {res.status_code}")
         except httpx.RequestError as e:
-            print(f"  {RED}✗{RESET} Cannot connect to {base_url}: {e}")
+            print(f"  {RED}{FAIL_MARK}{RESET} Cannot connect to {base_url}: {e}")
             print(f"\n{RED}Make sure the backend is running!{RESET}")
             print(f"  → cd apps/backend && uvicorn app.main:app --reload")
             return 0, len(test_cases)
@@ -280,16 +221,34 @@ def run_all_tests(
         print_header("Setup Phase")
         ensure_camera_exists(client, verbose=True)
 
-        # Pre-create registered account for first two tests
+        # Ensure registered-flow tests use a real registered plate from DB
+        registered_plate = pick_registered_plate(client, verbose=True)
+        if registered_plate:
+            for tc in test_cases:
+                if tc.get("id") in {"test_registered_in", "test_registered_out"}:
+                    if "payload" in tc:
+                        tc["payload"]["plate_text"] = registered_plate
+        else:
+            print(f"  {YELLOW}{WARN_MARK}{RESET} No registered plate found in DB for registered-flow tests")
+
+        # Make dynamic fixture plates to avoid payload-state collision across repeated runs
+        unknown_motorbike_plate = f"UNK{uuid4().hex[:6].upper()}"
+        unknown_car_plate = f"CAR{uuid4().hex[:6].upper()}"
+
         for tc in test_cases:
-            setup = tc.get("setup_required")
-            if setup and setup.get("create_registered_account"):
-                ensure_registered_account(
-                    client,
-                    plate_text=setup["plate_text"],
-                    balance=setup.get("initial_balance", 100000),
-                    verbose=True,
-                )
+            if tc.get("id") in {"test_unknown_in", "test_temporary_out"} and "payload" in tc:
+                tc["payload"]["plate_text"] = unknown_motorbike_plate
+
+        if not only_test and payloads.get("additional_scenarios"):
+            for scenario in payloads["additional_scenarios"]:
+                if scenario.get("id") == "test_low_confidence":
+                    scenario_payload = scenario.get("payload", {})
+                    scenario_payload["plate_text"] = f"LOW{uuid4().hex[:6].upper()}"
+                    scenario["payload"] = scenario_payload
+                if scenario.get("id") == "test_car_vehicle_type":
+                    scenario_payload = scenario.get("payload", {})
+                    scenario_payload["plate_text"] = unknown_car_plate
+                    scenario["payload"] = scenario_payload
 
         # Run tests
         print_header("Running Test Cases")
@@ -308,9 +267,9 @@ def run_all_tests(
                 print_result(f"[{test_id}] {test_name}", success, details)
             else:
                 if success:
-                    print(f"    {GREEN}✓ PASSED{RESET}")
+                    print(f"    {GREEN}{OK_MARK} PASSED{RESET}")
                 else:
-                    print(f"    {RED}✗ FAILED: {details}{RESET}")
+                    print(f"    {RED}{FAIL_MARK} FAILED: {details}{RESET}")
 
             if success:
                 passed += 1
@@ -388,10 +347,10 @@ Examples:
     print(f"  {RED}Failed: {failed}{RESET}")
 
     if failed == 0:
-        print(f"\n{GREEN}{BOLD}✓ All tests passed!{RESET}\n")
+        print(f"\n{GREEN}{BOLD}{OK_MARK} All tests passed!{RESET}\n")
         sys.exit(0)
     else:
-        print(f"\n{RED}{BOLD}✗ {failed} test(s) failed{RESET}\n")
+        print(f"\n{RED}{BOLD}{FAIL_MARK} {failed} test(s) failed{RESET}\n")
         sys.exit(1)
 
 

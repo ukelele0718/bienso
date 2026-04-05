@@ -228,11 +228,16 @@ Suy ra:
 - co kha nang audit batch import
 
 ### Checklist
-- [ ] can nhac them `source`
-- [ ] can nhac them `seed_group`
-- [ ] can nhac them `imported_at`
-- [ ] can nhac bang `import_batches`
-- [ ] can nhac dashboard import summary
+- [x] can nhac them `source`
+- [x] can nhac them `seed_group`
+- [x] can nhac them `imported_at`
+- [x] can nhac bang `import_batches`
+- [x] can nhac dashboard import summary
+- [x] deterministic reset fixture script cho test seeded flow
+- [x] timezone-aware datetime cho import/backend paths
+- [x] docker backend healthcheck/readiness
+- [x] CI regression workflow cho seeded flow
+- [x] test payload contract dynamic plate de tranh collision state
 
 ### Thoi gian uoc tinh
 - `de sau MVP`
