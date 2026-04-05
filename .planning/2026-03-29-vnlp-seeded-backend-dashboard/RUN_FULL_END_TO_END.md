@@ -423,30 +423,34 @@ Neu can demo nhanh trong 1 lan chay:
 
 ## 13.1) CI local quick run (giong regression pipeline)
 
-Tu workspace root:
+### Cach nhanh nhat (1 lenh)
 
-```bash
-# 1) Bat postgres
+```powershell
 cd G:/TTMT/datn
-docker compose up -d postgres
-
-# 2) Chay migration (backend env)
-$env:PYTHONPATH="G:/TTMT/datn/apps/backend"
-$env:APP_DATABASE_URL="postgresql+psycopg2://postgres:postgres@localhost:5432/vehicle_lpr"
-python "G:/TTMT/datn/apps/backend/scripts/run_migrations.py"
-
-# 3) Reset deterministic fixture
-python "G:/TTMT/datn/scripts/reset_seeded_test_state.py"
-
-# 4) Chay backend
-# Option A: docker
-# docker compose up -d backend
-# Option B: local
-# cd apps/backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# 5) Chay seeded regression
-python "G:/TTMT/datn/scripts/test_seeded_flow.py" --base-url http://localhost:8000
+powershell -ExecutionPolicy Bypass -File "G:/TTMT/datn/scripts/run_seeded_regression.ps1" -UseDockerBackend
 ```
+
+### Tuy chon
+
+```powershell
+# bo qua build backend docker
+powershell -ExecutionPolicy Bypass -File "G:/TTMT/datn/scripts/run_seeded_regression.ps1" -UseDockerBackend -SkipBuild
+
+# backend da chay san (khong auto start backend)
+powershell -ExecutionPolicy Bypass -File "G:/TTMT/datn/scripts/run_seeded_regression.ps1"
+
+# custom DB URL / base URL
+powershell -ExecutionPolicy Bypass -File "G:/TTMT/datn/scripts/run_seeded_regression.ps1" -UseDockerBackend -DatabaseUrl "postgresql+psycopg2://postgres:postgres@localhost:5432/vehicle_lpr" -BaseUrl "http://localhost:8000"
+```
+
+Script se tu dong:
+1. Start postgres
+2. Set env cho backend scripts
+3. Chay migration
+4. Reset deterministic fixture
+5. (optional) Start backend docker
+6. Wait health check
+7. Chay seeded flow regression
 
 Ky vong:
 - [OK] Backend healthy
