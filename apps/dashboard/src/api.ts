@@ -4,6 +4,8 @@ import type {
   AccountsSummaryResponse,
   BarrierActionOut,
   EventOut,
+  ImportBatchesSummaryResponse,
+  ImportBatchOut,
   OcrRateOut,
   RealtimeStatOut,
   TrafficStatOut,
@@ -92,6 +94,16 @@ export async function fetchAccounts(params?: {
 export async function fetchAccountsSummary(): Promise<AccountsSummaryResponse> {
   const res = await fetch(`${BASE_URL}/api/v1/accounts/summary`);
   return parseJson<AccountsSummaryResponse>(res, 'Failed to fetch accounts summary');
+}
+
+export async function fetchImportBatches(limit = 20): Promise<ImportBatchOut[]> {
+  const res = await fetch(`${BASE_URL}/api/v1/import-batches?limit=${limit}`);
+  return parseJson<ImportBatchOut[]>(res, 'Failed to fetch import batches');
+}
+
+export async function fetchImportBatchesSummary(): Promise<ImportBatchesSummaryResponse> {
+  const res = await fetch(`${BASE_URL}/api/v1/import-batches/summary`);
+  return parseJson<ImportBatchesSummaryResponse>(res, 'Failed to fetch import batches summary');
 }
 
 export async function verifyBarrier(plate: string, actor: string): Promise<BarrierActionOut> {

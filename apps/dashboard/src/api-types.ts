@@ -100,3 +100,20 @@ export interface AccountsSummaryResponse {
   registered_accounts: number;
   temporary_registered_accounts: number;
 }
+
+export interface ImportBatchOut {
+  id: string;
+  source: string;
+  seed_group: string | null;
+  imported_count: number;
+  skipped_count: number;
+  invalid_count: number;
+  created_at: string;
+}
+
+export interface ImportBatchesSummaryResponse {
+  total_batches: number;
+  total_imported: number;
+  total_skipped: number;
+  total_invalid: number;
+}
