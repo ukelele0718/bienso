@@ -3,6 +3,10 @@ import type {
   BarrierActionOut,
   EventOut,
   OcrRateOut,
+  PretrainedImportIn,
+  PretrainedInferIn,
+  PretrainedJobOut,
+  PretrainedJobsPageOut,
   RealtimeStatOut,
   TrafficStatOut,
   TransactionOut,
@@ -66,4 +70,33 @@ export async function fetchTransactions(plateText: string): Promise<TransactionO
 export async function fetchBarrierActions(plateText: string): Promise<BarrierActionOut[]> {
   const res = await fetch(`${BASE_URL}/api/v1/barrier-actions?plate=${encodeURIComponent(plateText)}`);
   return parseJson<BarrierActionOut[]>(res, 'Failed to fetch barrier actions');
+}
+
+export async function createPretrainedInferJob(payload: PretrainedInferIn): Promise<PretrainedJobOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/infer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<PretrainedJobOut>(res, 'Failed to create pretrained infer job');
+}
+
+export async function createPretrainedImportJob(payload: PretrainedImportIn): Promise<PretrainedJobOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<PretrainedJobOut>(res, 'Failed to create pretrained import job');
+}
+
+export async function fetchPretrainedJobs(page = 1, pageSize = 20): Promise<PretrainedJobsPageOut> {
+  const query = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/jobs?${query.toString()}`);
+  return parseJson<PretrainedJobsPageOut>(res, 'Failed to fetch pretrained jobs');
+}
+
+export async function fetchPretrainedJob(jobId: string): Promise<PretrainedJobOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/jobs/${encodeURIComponent(jobId)}`);
+  return parseJson<PretrainedJobOut>(res, 'Failed to fetch pretrained job detail');
 }

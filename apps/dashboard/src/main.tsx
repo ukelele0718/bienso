@@ -2,15 +2,24 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import {
+  createPretrainedImportJob,
+  createPretrainedInferJob,
   fetchAccount,
   fetchBarrierActions,
   fetchEvents,
   fetchOcrRate,
+  fetchPretrainedJobs,
   fetchRealtimeStats,
   fetchTraffic,
   fetchTransactions,
 } from './api';
-import type { BarrierActionOut, EventOut, RealtimeStatOut, TrafficStatOut } from './api-types';
+import type {
+  BarrierActionOut,
+  EventOut,
+  PretrainedJobOut,
+  RealtimeStatOut,
+  TrafficStatOut,
+} from './api-types';
 
 const cardStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -31,6 +40,10 @@ function App(): React.JSX.Element {
   const [accountBalance, setAccountBalance] = useState<number | null>(null);
   const [transactionsCount, setTransactionsCount] = useState<number | null>(null);
   const [barrierActions, setBarrierActions] = useState<BarrierActionOut[]>([]);
+  const [pretrainedJobs, setPretrainedJobs] = useState<PretrainedJobOut[]>([]);
+  const [pretrainedSource, setPretrainedSource] = useState('demo://frame-001.jpg');
+  const [pretrainedModelVersion, setPretrainedModelVersion] = useState('mock-v1');
+  const [pretrainedThreshold, setPretrainedThreshold] = useState('0.5');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,16 +54,18 @@ function App(): React.JSX.Element {
   async function loadRealtime(): Promise<void> {
     try {
       setLoading(true);
-      const [realtimeRes, eventsRes, ocrRes, trafficRes] = await Promise.all([
+      const [realtimeRes, eventsRes, ocrRes, trafficRes, pretrainedRes] = await Promise.all([
         fetchRealtimeStats(),
         fetchEvents(),
         fetchOcrRate(),
         fetchTraffic('hour'),
+        fetchPretrainedJobs(1, 6),
       ]);
       setRealtime(realtimeRes);
       setEvents(eventsRes.slice(0, 8));
       setOcrRate(ocrRes.success_rate);
       setTraffic(trafficRes);
+      setPretrainedJobs(pretrainedRes.items);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -77,6 +92,45 @@ function App(): React.JSX.Element {
       setTransactionsCount(transactions.length);
       setBarrierActions(barrier);
       setSearchEvents(eventsRes);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCreateInferJob(): Promise<void> {
+    try {
+      setLoading(true);
+      await createPretrainedInferJob({
+        model_version: pretrainedModelVersion,
+        source: pretrainedSource,
+        threshold: pretrainedThreshold ? Number(pretrainedThreshold) : null,
+      });
+      const jobs = await fetchPretrainedJobs(1, 6);
+      setPretrainedJobs(jobs.items);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCreateImportJob(): Promise<void> {
+    try {
+      setLoading(true);
+      await createPretrainedImportJob({
+        model_version: pretrainedModelVersion,
+        source: pretrainedSource,
+        items: [
+          { plate_text: '51G12345', confidence: 0.9, vehicle_type: 'motorbike' },
+          { plate_text: '99X99999', confidence: 0.78, vehicle_type: 'car' },
+        ],
+      });
+      const jobs = await fetchPretrainedJobs(1, 6);
+      setPretrainedJobs(jobs.items);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -198,6 +252,77 @@ function App(): React.JSX.Element {
             <p style={{ margin: 0, color: '#64748b' }}>Transactions</p>
             <p style={{ margin: '6px 0', fontWeight: 600 }}>{transactionsCount ?? '--'}</p>
           </div>
+        </div>
+      </section>
+
+      <section style={{ marginTop: 24, ...cardStyle }}>
+        <h3 style={{ marginTop: 0 }}>Pretrained Import (Mocked)</h3>
+        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '2fr 1fr 1fr auto auto' }}>
+          <input
+            value={pretrainedSource}
+            onChange={(event) => setPretrainedSource(event.target.value)}
+            placeholder="source"
+            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5f5' }}
+          />
+          <input
+            value={pretrainedModelVersion}
+            onChange={(event) => setPretrainedModelVersion(event.target.value)}
+            placeholder="model version"
+            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5f5' }}
+          />
+          <input
+            value={pretrainedThreshold}
+            onChange={(event) => setPretrainedThreshold(event.target.value)}
+            placeholder="threshold"
+            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5f5' }}
+          />
+          <button
+            type="button"
+            onClick={handleCreateInferJob}
+            disabled={loading}
+            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5f5' }}
+          >
+            Create Infer Job
+          </button>
+          <button
+            type="button"
+            onClick={handleCreateImportJob}
+            disabled={loading}
+            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5f5' }}
+          >
+            Create Import Job
+          </button>
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          {pretrainedJobs.length === 0 ? (
+            <p style={{ color: '#94a3b8' }}>No pretrained jobs yet</p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: '#475569' }}>
+                  <th style={{ paddingBottom: 8 }}>Job ID</th>
+                  <th style={{ paddingBottom: 8 }}>Type</th>
+                  <th style={{ paddingBottom: 8 }}>Status</th>
+                  <th style={{ paddingBottom: 8 }}>Source</th>
+                  <th style={{ paddingBottom: 8 }}>Processed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pretrainedJobs.map((row) => (
+                  <tr key={row.id}>
+                    <td style={{ padding: '6px 0', fontFamily: 'monospace' }}>{row.id.slice(0, 8)}</td>
+                    <td style={{ padding: '6px 0' }}>{row.job_type}</td>
+                    <td style={{ padding: '6px 0' }}>{row.status}</td>
+                    <td style={{ padding: '6px 0' }}>{row.source}</td>
+                    <td style={{ padding: '6px 0' }}>
+                      {row.processed_items}/{row.total_items}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
 

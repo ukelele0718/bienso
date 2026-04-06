@@ -80,3 +80,47 @@ export interface BarrierActionOut {
 export interface ErrorOut {
   detail: string;
 }
+
+export type PretrainedJobType = 'infer' | 'import';
+export type PretrainedJobStatus = 'queued' | 'running' | 'success' | 'failed';
+
+export interface PretrainedInferIn {
+  model_version?: string;
+  source: string;
+  threshold?: number | null;
+}
+
+export interface PretrainedImportItemIn {
+  plate_text: string;
+  confidence?: number | null;
+  vehicle_type?: VehicleType | null;
+  event_time?: string | null;
+}
+
+export interface PretrainedImportIn {
+  model_version?: string;
+  source: string;
+  items: PretrainedImportItemIn[];
+}
+
+export interface PretrainedJobOut {
+  id: string;
+  job_type: PretrainedJobType;
+  status: PretrainedJobStatus;
+  model_version: string;
+  source: string;
+  threshold: number | null;
+  total_items: number;
+  processed_items: number;
+  created_at: string;
+  updated_at: string;
+  error_message?: string | null;
+  result_preview?: Record<string, unknown> | null;
+}
+
+export interface PretrainedJobsPageOut {
+  items: PretrainedJobOut[];
+  page: number;
+  page_size: number;
+  total: number;
+}

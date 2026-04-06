@@ -44,12 +44,12 @@
 ### 4.1 Backend schema + models
 - [ ] Them model `PretrainedJob`.
 - [ ] Them model `PretrainedDetection`.
-- [ ] Them enums status/type.
-- [ ] Cap nhat `schemas.py` + `api-types.ts` tuong ung.
+- [x] Them enums status/type.
+- [x] Cap nhat `schemas.py` + `api-types.ts` tuong ung.
 
 ### 4.2 Backend services (mockable)
-- [ ] `services/pretrained_inference.py` (stub)
-- [ ] `services/pretrained_import.py` (adapter stub)
+- [x] `services/pretrained_inference.py` (stub)
+- [x] `services/pretrained_import.py` (adapter stub)
 - [ ] unit tests cho services (mock)
 
 ### 4.3 CRUD layer
@@ -58,15 +58,15 @@
 - [ ] Them summary endpoint (job counts)
 
 ### 4.4 API routes
-- [ ] `POST /pretrained/infer` (return job + mock result)
-- [ ] `POST /pretrained/import` (create job + items)
-- [ ] `GET /pretrained/jobs` (pagination)
-- [ ] `GET /pretrained/jobs/{id}`
+- [x] `POST /pretrained/infer` (return job + mock result)
+- [x] `POST /pretrained/import` (create job + items)
+- [x] `GET /pretrained/jobs` (pagination)
+- [x] `GET /pretrained/jobs/{id}`
 
 ### 4.5 Dashboard
-- [ ] Page/Section “Pretrained Import”
-- [ ] Form submit mock job
-- [ ] Table job history + badge status
+- [x] Page/Section “Pretrained Import”
+- [x] Form submit mock job
+- [x] Table job history + badge status
 - [ ] Detail drawer (job meta + items)
 
 ### 4.6 Docs + Planning
