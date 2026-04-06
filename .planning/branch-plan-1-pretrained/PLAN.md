@@ -55,7 +55,7 @@
 ### 4.3 CRUD layer
 - [x] Them CRUD create/list/get job
 - [x] Them CRUD insert detections (batch)
-- [ ] Them summary endpoint (job counts)
+- [x] Them summary endpoint (job counts)
 
 ### 4.4 API routes
 - [x] `POST /pretrained/infer` (return job + mock result)
@@ -70,9 +70,9 @@
 - [x] Detail drawer (job meta + items)
 
 ### 4.6 Docs + Planning
-- [ ] Update `API_CONTRACT.md`
-- [ ] Update `DB_SCHEMA.md`
-- [ ] Update branch runbook
+- [x] Update `API_CONTRACT.md`
+- [x] Update `DB_SCHEMA.md`
+- [x] Update branch runbook
 
 ---
 

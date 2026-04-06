@@ -7,6 +7,7 @@ import type {
   PretrainedInferIn,
   PretrainedJobOut,
   PretrainedJobsPageOut,
+  PretrainedJobsSummaryOut,
   RealtimeStatOut,
   TrafficStatOut,
   TransactionOut,
@@ -99,4 +100,9 @@ export async function fetchPretrainedJobs(page = 1, pageSize = 20): Promise<Pret
 export async function fetchPretrainedJob(jobId: string): Promise<PretrainedJobOut> {
   const res = await fetch(`${BASE_URL}/api/v1/pretrained/jobs/${encodeURIComponent(jobId)}`);
   return parseJson<PretrainedJobOut>(res, 'Failed to fetch pretrained job detail');
+}
+
+export async function fetchPretrainedJobsSummary(): Promise<PretrainedJobsSummaryOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/jobs/summary`);
+  return parseJson<PretrainedJobsSummaryOut>(res, 'Failed to fetch pretrained jobs summary');
 }

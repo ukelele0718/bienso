@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from .models import PretrainedDetection, PretrainedJob
@@ -86,3 +86,24 @@ def list_detections_by_job(db: Session, job_id: str) -> list[PretrainedDetection
         .scalars()
         .all()
     )
+
+
+def get_jobs_summary(db: Session) -> dict[str, int]:
+    row = db.execute(
+        select(
+            func.count().label("total"),
+            func.sum(case((PretrainedJob.status == "queued", 1), else_=0)).label("queued"),
+            func.sum(case((PretrainedJob.status == "running", 1), else_=0)).label("running"),
+            func.sum(case((PretrainedJob.status == "success", 1), else_=0)).label("success"),
+            func.sum(case((PretrainedJob.status == "failed", 1), else_=0)).label("failed"),
+        )
+        .select_from(PretrainedJob)
+    ).one()
+
+    return {
+        "total": int(row.total or 0),
+        "queued": int(row.queued or 0),
+        "running": int(row.running or 0),
+        "success": int(row.success or 0),
+        "failed": int(row.failed or 0),
+    }

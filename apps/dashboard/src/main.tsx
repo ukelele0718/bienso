@@ -10,6 +10,7 @@ import {
   fetchOcrRate,
   fetchPretrainedJob,
   fetchPretrainedJobs,
+  fetchPretrainedJobsSummary,
   fetchRealtimeStats,
   fetchTraffic,
   fetchTransactions,
@@ -42,6 +43,7 @@ function App(): React.JSX.Element {
   const [transactionsCount, setTransactionsCount] = useState<number | null>(null);
   const [barrierActions, setBarrierActions] = useState<BarrierActionOut[]>([]);
   const [pretrainedJobs, setPretrainedJobs] = useState<PretrainedJobOut[]>([]);
+  const [pretrainedSummary, setPretrainedSummary] = useState({ total: 0, queued: 0, running: 0, success: 0, failed: 0 });
   const [selectedPretrainedJob, setSelectedPretrainedJob] = useState<PretrainedJobOut | null>(null);
   const [showPretrainedDrawer, setShowPretrainedDrawer] = useState(false);
   const [pretrainedSource, setPretrainedSource] = useState('demo://frame-001.jpg');
@@ -57,18 +59,20 @@ function App(): React.JSX.Element {
   async function loadRealtime(): Promise<void> {
     try {
       setLoading(true);
-      const [realtimeRes, eventsRes, ocrRes, trafficRes, pretrainedRes] = await Promise.all([
+      const [realtimeRes, eventsRes, ocrRes, trafficRes, pretrainedRes, pretrainedSummaryRes] = await Promise.all([
         fetchRealtimeStats(),
         fetchEvents(),
         fetchOcrRate(),
         fetchTraffic('hour'),
         fetchPretrainedJobs(1, 6),
+        fetchPretrainedJobsSummary(),
       ]);
       setRealtime(realtimeRes);
       setEvents(eventsRes.slice(0, 8));
       setOcrRate(ocrRes.success_rate);
       setTraffic(trafficRes);
       setPretrainedJobs(pretrainedRes.items);
+      setPretrainedSummary(pretrainedSummaryRes);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -111,8 +115,9 @@ function App(): React.JSX.Element {
         source: pretrainedSource,
         threshold: pretrainedThreshold ? Number(pretrainedThreshold) : null,
       });
-      const jobs = await fetchPretrainedJobs(1, 6);
+      const [jobs, summary] = await Promise.all([fetchPretrainedJobs(1, 6), fetchPretrainedJobsSummary()]);
       setPretrainedJobs(jobs.items);
+      setPretrainedSummary(summary);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -132,8 +137,9 @@ function App(): React.JSX.Element {
           { plate_text: '99X99999', confidence: 0.78, vehicle_type: 'car' },
         ],
       });
-      const jobs = await fetchPretrainedJobs(1, 6);
+      const [jobs, summary] = await Promise.all([fetchPretrainedJobs(1, 6), fetchPretrainedJobsSummary()]);
       setPretrainedJobs(jobs.items);
+      setPretrainedSummary(summary);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -273,7 +279,15 @@ function App(): React.JSX.Element {
       </section>
 
       <section style={{ marginTop: 24, ...cardStyle }}>
-        <h3 style={{ marginTop: 0 }}>Pretrained Import (Mocked)</h3>
+        <h3 style={{ marginTop: 0 }}>Pretrained Import (Persisted)</h3>
+        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(5, minmax(120px, 1fr))', marginBottom: 10 }}>
+          <div><strong>Total:</strong> {pretrainedSummary.total}</div>
+          <div><strong>Queued:</strong> {pretrainedSummary.queued}</div>
+          <div><strong>Running:</strong> {pretrainedSummary.running}</div>
+          <div><strong>Success:</strong> {pretrainedSummary.success}</div>
+          <div><strong>Failed:</strong> {pretrainedSummary.failed}</div>
+        </div>
+
         <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '2fr 1fr 1fr auto auto' }}>
           <input
             value={pretrainedSource}

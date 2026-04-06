@@ -136,3 +136,11 @@ export interface PretrainedJobsPageOut {
   page_size: number;
   total: number;
 }
+
+export interface PretrainedJobsSummaryOut {
+  total: number;
+  queued: number;
+  running: number;
+  success: number;
+  failed: number;
+}

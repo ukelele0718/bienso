@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -18,6 +18,7 @@ from .schemas import (
     PretrainedImportIn,
     PretrainedJobOut,
     PretrainedJobsPageOut,
+    PretrainedJobsSummaryOut,
     PretrainedInferIn,
     RealtimeStatOut,
     TrafficStatOut,
@@ -318,6 +319,11 @@ def get_pretrained_job(job_id: str, db: Session = Depends(get_db)) -> Pretrained
     )
 
 
+@app.get("/api/v1/pretrained/jobs/summary", response_model=PretrainedJobsSummaryOut)
+def get_pretrained_jobs_summary(db: Session = Depends(get_db)) -> PretrainedJobsSummaryOut:
+    return PretrainedJobsSummaryOut(**crud_pretrained.get_jobs_summary(db))
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "time": datetime.utcnow().isoformat()}
+    return {"status": "ok", "time": datetime.now(UTC).isoformat()}

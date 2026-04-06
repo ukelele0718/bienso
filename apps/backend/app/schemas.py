@@ -152,3 +152,11 @@ class PretrainedJobsPageOut(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+class PretrainedJobsSummaryOut(BaseModel):
+    total: int
+    queued: int
+    running: int
+    success: int
+    failed: int
