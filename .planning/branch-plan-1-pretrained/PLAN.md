@@ -42,19 +42,19 @@
 ## 4) Work Breakdown (code-heavy)
 
 ### 4.1 Backend schema + models
-- [ ] Them model `PretrainedJob`.
-- [ ] Them model `PretrainedDetection`.
+- [x] Them model `PretrainedJob`.
+- [x] Them model `PretrainedDetection`.
 - [x] Them enums status/type.
 - [x] Cap nhat `schemas.py` + `api-types.ts` tuong ung.
 
 ### 4.2 Backend services (mockable)
 - [x] `services/pretrained_inference.py` (stub)
 - [x] `services/pretrained_import.py` (adapter stub)
-- [ ] unit tests cho services (mock)
+- [x] unit tests cho services (mock)
 
 ### 4.3 CRUD layer
-- [ ] Them CRUD create/list/get job
-- [ ] Them CRUD insert detections (batch)
+- [x] Them CRUD create/list/get job
+- [x] Them CRUD insert detections (batch)
 - [ ] Them summary endpoint (job counts)
 
 ### 4.4 API routes
@@ -67,7 +67,7 @@
 - [x] Page/Section “Pretrained Import”
 - [x] Form submit mock job
 - [x] Table job history + badge status
-- [ ] Detail drawer (job meta + items)
+- [x] Detail drawer (job meta + items)
 
 ### 4.6 Docs + Planning
 - [ ] Update `API_CONTRACT.md`

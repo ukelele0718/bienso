@@ -120,6 +120,17 @@ class PretrainedImportIn(BaseModel):
     items: list[PretrainedImportItemIn] = Field(default_factory=list)
 
 
+class PretrainedDetectionOut(BaseModel):
+    id: str
+    job_id: str
+    plate_text: str | None = None
+    confidence: float | None = None
+    vehicle_type: VehicleType | None = None
+    event_time: datetime | None = None
+    metadata_json: dict | None = None
+    created_at: datetime
+
+
 class PretrainedJobOut(BaseModel):
     id: str
     job_type: PretrainedJobType
@@ -133,6 +144,7 @@ class PretrainedJobOut(BaseModel):
     updated_at: datetime
     error_message: str | None = None
     result_preview: dict | None = None
+    items: list[PretrainedDetectionOut] | None = None
 
 
 class PretrainedJobsPageOut(BaseModel):

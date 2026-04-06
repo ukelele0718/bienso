@@ -8,6 +8,7 @@ import {
   fetchBarrierActions,
   fetchEvents,
   fetchOcrRate,
+  fetchPretrainedJob,
   fetchPretrainedJobs,
   fetchRealtimeStats,
   fetchTraffic,
@@ -41,6 +42,8 @@ function App(): React.JSX.Element {
   const [transactionsCount, setTransactionsCount] = useState<number | null>(null);
   const [barrierActions, setBarrierActions] = useState<BarrierActionOut[]>([]);
   const [pretrainedJobs, setPretrainedJobs] = useState<PretrainedJobOut[]>([]);
+  const [selectedPretrainedJob, setSelectedPretrainedJob] = useState<PretrainedJobOut | null>(null);
+  const [showPretrainedDrawer, setShowPretrainedDrawer] = useState(false);
   const [pretrainedSource, setPretrainedSource] = useState('demo://frame-001.jpg');
   const [pretrainedModelVersion, setPretrainedModelVersion] = useState('mock-v1');
   const [pretrainedThreshold, setPretrainedThreshold] = useState('0.5');
@@ -131,6 +134,20 @@ function App(): React.JSX.Element {
       });
       const jobs = await fetchPretrainedJobs(1, 6);
       setPretrainedJobs(jobs.items);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function openPretrainedJobDetail(jobId: string): Promise<void> {
+    try {
+      setLoading(true);
+      const row = await fetchPretrainedJob(jobId);
+      setSelectedPretrainedJob(row);
+      setShowPretrainedDrawer(true);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -310,7 +327,12 @@ function App(): React.JSX.Element {
               </thead>
               <tbody>
                 {pretrainedJobs.map((row) => (
-                  <tr key={row.id}>
+                  <tr
+                    key={row.id}
+                    onClick={() => void openPretrainedJobDetail(row.id)}
+                    style={{ cursor: 'pointer' }}
+                    title="Click to view details"
+                  >
                     <td style={{ padding: '6px 0', fontFamily: 'monospace' }}>{row.id.slice(0, 8)}</td>
                     <td style={{ padding: '6px 0' }}>{row.job_type}</td>
                     <td style={{ padding: '6px 0' }}>{row.status}</td>
@@ -370,6 +392,68 @@ function App(): React.JSX.Element {
           )}
         </div>
       </section>
+
+      {showPretrainedDrawer && selectedPretrainedJob ? (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            width: 420,
+            height: '100vh',
+            background: '#ffffff',
+            boxShadow: '-12px 0 30px rgba(15, 23, 42, 0.18)',
+            padding: 20,
+            overflowY: 'auto',
+            zIndex: 1000,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0 }}>Pretrained Job Detail</h3>
+            <button
+              type="button"
+              onClick={() => setShowPretrainedDrawer(false)}
+              style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #cbd5f5' }}
+            >
+              Close
+            </button>
+          </div>
+
+          <div style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6 }}>
+            <div><strong>ID:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedPretrainedJob.id}</span></div>
+            <div><strong>Type:</strong> {selectedPretrainedJob.job_type}</div>
+            <div><strong>Status:</strong> {selectedPretrainedJob.status}</div>
+            <div><strong>Source:</strong> {selectedPretrainedJob.source}</div>
+            <div><strong>Model:</strong> {selectedPretrainedJob.model_version}</div>
+            <div><strong>Threshold:</strong> {selectedPretrainedJob.threshold ?? '--'}</div>
+            <div><strong>Processed:</strong> {selectedPretrainedJob.processed_items}/{selectedPretrainedJob.total_items}</div>
+          </div>
+
+          <h4 style={{ marginTop: 18 }}>Items</h4>
+          {selectedPretrainedJob.items && selectedPretrainedJob.items.length > 0 ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: '#475569' }}>
+                  <th style={{ paddingBottom: 8 }}>Plate</th>
+                  <th style={{ paddingBottom: 8 }}>Conf</th>
+                  <th style={{ paddingBottom: 8 }}>Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedPretrainedJob.items.map((item) => (
+                  <tr key={item.id}>
+                    <td style={{ padding: '6px 0' }}>{item.plate_text ?? '--'}</td>
+                    <td style={{ padding: '6px 0' }}>{item.confidence ?? '--'}</td>
+                    <td style={{ padding: '6px 0' }}>{item.vehicle_type ?? '--'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p style={{ color: '#94a3b8' }}>No items</p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
