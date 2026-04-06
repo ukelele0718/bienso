@@ -6,7 +6,7 @@ from typing import List
 from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from . import crud
+from . import crud, services_pretrained
 from .db import get_db
 from .schemas import (
     AccountOut,
@@ -15,6 +15,10 @@ from .schemas import (
     EventIn,
     EventOut,
     OcrRateOut,
+    PretrainedImportIn,
+    PretrainedJobOut,
+    PretrainedJobsPageOut,
+    PretrainedInferIn,
     RealtimeStatOut,
     TrafficStatOut,
     TransactionOut,
@@ -174,6 +178,48 @@ def get_ocr_success_rate(db: Session = Depends(get_db)) -> OcrRateOut:
 @app.get("/api/v1/errors/sample", response_model=ErrorOut)
 def get_error_sample() -> ErrorOut:
     return ErrorOut(detail="not_implemented")
+
+
+@app.post("/api/v1/pretrained/infer", response_model=PretrainedJobOut)
+def create_pretrained_infer_job(payload: PretrainedInferIn) -> PretrainedJobOut:
+    row = services_pretrained.create_infer_job(
+        model_version=payload.model_version,
+        source=payload.source,
+        threshold=payload.threshold,
+    )
+    return PretrainedJobOut(**row)
+
+
+@app.post("/api/v1/pretrained/import", response_model=PretrainedJobOut)
+def create_pretrained_import_job(payload: PretrainedImportIn) -> PretrainedJobOut:
+    row = services_pretrained.create_import_job(
+        model_version=payload.model_version,
+        source=payload.source,
+        items=[item.model_dump() for item in payload.items],
+    )
+    return PretrainedJobOut(**row)
+
+
+@app.get("/api/v1/pretrained/jobs", response_model=PretrainedJobsPageOut)
+def list_pretrained_jobs(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+) -> PretrainedJobsPageOut:
+    rows, total = services_pretrained.list_jobs(page=page, page_size=page_size)
+    return PretrainedJobsPageOut(
+        items=[PretrainedJobOut(**row) for row in rows],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
+
+
+@app.get("/api/v1/pretrained/jobs/{job_id}", response_model=PretrainedJobOut)
+def get_pretrained_job(job_id: str) -> PretrainedJobOut:
+    row = services_pretrained.get_job(job_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="pretrained_job_not_found")
+    return PretrainedJobOut(**row)
 
 
 @app.get("/health")
