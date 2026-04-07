@@ -25,6 +25,7 @@ Thumbs.db
 .tmp/
 .artifacts/
 .cursor/
+.cursor - Copy/
 runs/
 yolov8n.pt
 .agents/
