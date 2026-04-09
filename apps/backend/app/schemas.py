@@ -11,6 +11,8 @@ OcrStatus = Literal["success", "partial", "failed"]
 TransactionType = Literal["init", "event_charge", "manual_adjust"]
 RegistrationStatus = Literal["registered", "temporary_registered", "unknown"]
 BarrierActionType = Literal["open", "hold"]
+PretrainedJobType = Literal["infer", "import"]
+PretrainedJobStatus = Literal["queued", "running", "success", "failed"]
 
 
 class EventIn(BaseModel):
@@ -99,55 +101,62 @@ class ErrorOut(BaseModel):
     detail: str
 
 
-class AccountListItem(BaseModel):
-    plate_text: str
-    balance_vnd: int
-    registration_status: RegistrationStatus | None = None
-
-
-class AccountListResponse(BaseModel):
-    items: list[AccountListItem]
-    total: int
-    page: int
-    page_size: int
-
-
-class AccountsSummaryResponse(BaseModel):
-    total_accounts: int
-    registered_accounts: int
-    temporary_registered_accounts: int
-
-
-class ImportBatchOut(BaseModel):
-    id: str
+class PretrainedInferIn(BaseModel):
+    model_version: str = "mock-v1"
     source: str
-    seed_group: str | None = None
-    imported_count: int
-    skipped_count: int
-    invalid_count: int
+    threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class PretrainedImportItemIn(BaseModel):
+    plate_text: str
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    vehicle_type: VehicleType | None = None
+    event_time: datetime | None = None
+
+
+class PretrainedImportIn(BaseModel):
+    model_version: str = "mock-v1"
+    source: str
+    items: list[PretrainedImportItemIn] = Field(default_factory=list)
+
+
+class PretrainedDetectionOut(BaseModel):
+    id: str
+    job_id: str
+    plate_text: str | None = None
+    confidence: float | None = None
+    vehicle_type: VehicleType | None = None
+    event_time: datetime | None = None
+    metadata_json: dict | None = None
     created_at: datetime
 
 
-class ImportBatchesSummaryResponse(BaseModel):
-    total_batches: int
-    total_imported: int
-    total_skipped: int
-    total_invalid: int
+class PretrainedJobOut(BaseModel):
+    id: str
+    job_type: PretrainedJobType
+    status: PretrainedJobStatus
+    model_version: str
+    source: str
+    threshold: float | None
+    total_items: int
+    processed_items: int
+    created_at: datetime
+    updated_at: datetime
+    error_message: str | None = None
+    result_preview: dict | None = None
+    items: list[PretrainedDetectionOut] | None = None
 
 
-class MarkRegisteredResponse(BaseModel):
-    plate_text: str
-    registration_status: RegistrationStatus
+class PretrainedJobsPageOut(BaseModel):
+    items: list[PretrainedJobOut]
+    page: int
+    page_size: int
+    total: int
 
 
-class AdjustBalanceIn(BaseModel):
-    amount_vnd: int
-    actor: str | None = None
-    reason: str | None = None
-
-
-class AdjustBalanceResponse(BaseModel):
-    plate_text: str
-    balance_vnd: int
-    delta_vnd: int
-    transaction_id: str
+class PretrainedJobsSummaryOut(BaseModel):
+    total: int
+    queued: int
+    running: int
+    success: int
+    failed: int

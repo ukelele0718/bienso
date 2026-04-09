@@ -6,23 +6,20 @@ from typing import List
 from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from . import crud
+from . import crud, crud_pretrained
 from .db import get_db
 from .schemas import (
-    AccountListItem,
-    AccountListResponse,
     AccountOut,
-    AccountsSummaryResponse,
-    AdjustBalanceIn,
-    AdjustBalanceResponse,
     BarrierActionOut,
     ErrorOut,
     EventIn,
     EventOut,
-    ImportBatchesSummaryResponse,
-    ImportBatchOut,
-    MarkRegisteredResponse,
     OcrRateOut,
+    PretrainedImportIn,
+    PretrainedJobOut,
+    PretrainedJobsPageOut,
+    PretrainedJobsSummaryOut,
+    PretrainedInferIn,
     RealtimeStatOut,
     TrafficStatOut,
     TransactionOut,
@@ -37,8 +34,8 @@ def create_event(payload: EventIn, db: Session = Depends(get_db)) -> EventOut:
     plate_read = crud.get_event_plate_meta(db, event.id)
 
     return EventOut(
-        id=str(event.id),
-        camera_id=str(event.camera_id),
+        id=event.id,
+        camera_id=event.camera_id,
         timestamp=event.timestamp,
         direction=event.direction,
         vehicle_type=event.vehicle_type,
@@ -69,8 +66,8 @@ def list_events(
         barrier_action = crud.get_event_barrier_meta(db, e.id)
         result.append(
             EventOut(
-                id=str(e.id),
-                camera_id=str(e.camera_id),
+                id=e.id,
+                camera_id=e.camera_id,
                 timestamp=e.timestamp,
                 direction=e.direction,
                 vehicle_type=e.vehicle_type,
@@ -85,62 +82,6 @@ def list_events(
             )
         )
     return result
-
-
-@app.get("/api/v1/accounts", response_model=AccountListResponse)
-def list_accounts(
-    plate: str | None = Query(default=None),
-    registration_status: str | None = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_db),
-) -> AccountListResponse:
-    accounts, total = crud.list_accounts(db, plate, registration_status, page, page_size)
-    return AccountListResponse(
-        items=[
-            AccountListItem(
-                plate_text=acc.plate_text,
-                balance_vnd=acc.balance_vnd,
-                registration_status=acc.registration_status,
-            )
-            for acc in accounts
-        ],
-        total=total,
-        page=page,
-        page_size=page_size,
-    )
-
-
-@app.get("/api/v1/accounts/summary", response_model=AccountsSummaryResponse)
-def get_accounts_summary(db: Session = Depends(get_db)) -> AccountsSummaryResponse:
-    summary = crud.get_accounts_summary(db)
-    return AccountsSummaryResponse(**summary)
-
-
-@app.get("/api/v1/import-batches", response_model=List[ImportBatchOut])
-def get_import_batches(
-    limit: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_db),
-) -> List[ImportBatchOut]:
-    rows = crud.list_import_batches(db, limit=limit)
-    return [
-        ImportBatchOut(
-            id=row.id,
-            source=row.source,
-            seed_group=row.seed_group,
-            imported_count=row.imported_count,
-            skipped_count=row.skipped_count,
-            invalid_count=row.invalid_count,
-            created_at=row.created_at,
-        )
-        for row in rows
-    ]
-
-
-@app.get("/api/v1/import-batches/summary", response_model=ImportBatchesSummaryResponse)
-def get_import_batches_summary(db: Session = Depends(get_db)) -> ImportBatchesSummaryResponse:
-    summary = crud.get_import_batches_summary(db)
-    return ImportBatchesSummaryResponse(**summary)
 
 
 @app.get("/api/v1/accounts/{plate_text}", response_model=AccountOut)
@@ -177,45 +118,9 @@ def list_transactions(plate_text: str, db: Session = Depends(get_db)) -> List[Tr
     ]
 
 
-@app.post("/api/v1/accounts/{plate_text}/mark-registered", response_model=MarkRegisteredResponse)
-def mark_registered(plate_text: str, db: Session = Depends(get_db)) -> MarkRegisteredResponse:
-    try:
-        account = crud.mark_account_registered(db, plate_text)
-    except crud.NotFoundError as exc:
-        raise HTTPException(status_code=404, detail="account_not_found") from exc
-    return MarkRegisteredResponse(
-        plate_text=account.plate_text,
-        registration_status=account.registration_status,
-    )
-
-
-@app.post("/api/v1/accounts/{plate_text}/adjust-balance", response_model=AdjustBalanceResponse)
-def adjust_balance(
-    plate_text: str,
-    payload: AdjustBalanceIn,
-    db: Session = Depends(get_db),
-) -> AdjustBalanceResponse:
-    try:
-        account, tx = crud.adjust_account_balance(
-            db,
-            plate_text,
-            payload.amount_vnd,
-            actor=payload.actor,
-            reason=payload.reason,
-        )
-    except crud.NotFoundError as exc:
-        raise HTTPException(status_code=404, detail="account_not_found") from exc
-    return AdjustBalanceResponse(
-        plate_text=account.plate_text,
-        balance_vnd=account.balance_vnd,
-        delta_vnd=payload.amount_vnd,
-        transaction_id=tx.id,
-    )
-
-
 @app.get("/api/v1/barrier-actions", response_model=List[BarrierActionOut])
-def list_barrier_actions(plate: str | None = Query(default=None), db: Session = Depends(get_db)) -> List[BarrierActionOut]:
-    rows = crud.list_barrier_actions(db, plate)
+def list_barrier_actions(plate: str = Query(...), db: Session = Depends(get_db)) -> List[BarrierActionOut]:
+    rows = crud.list_barrier_actions_by_plate(db, plate)
     return [
         BarrierActionOut(
             id=row.id,
@@ -274,6 +179,149 @@ def get_ocr_success_rate(db: Session = Depends(get_db)) -> OcrRateOut:
 @app.get("/api/v1/errors/sample", response_model=ErrorOut)
 def get_error_sample() -> ErrorOut:
     return ErrorOut(detail="not_implemented")
+
+
+@app.post("/api/v1/pretrained/infer", response_model=PretrainedJobOut)
+def create_pretrained_infer_job(payload: PretrainedInferIn, db: Session = Depends(get_db)) -> PretrainedJobOut:
+    row = crud_pretrained.create_job(
+        db,
+        job_type="infer",
+        model_version=payload.model_version,
+        source=payload.source,
+        threshold=payload.threshold,
+        total_items=1,
+        processed_items=1,
+        status="success",
+        result_preview={
+            "plate_text": "MOCK12345",
+            "confidence": 0.92,
+            "vehicle_type": "motorbike",
+        },
+    )
+    db.commit()
+    db.refresh(row)
+    return PretrainedJobOut(**row.__dict__)
+
+
+@app.post("/api/v1/pretrained/import", response_model=PretrainedJobOut)
+def create_pretrained_import_job(payload: PretrainedImportIn, db: Session = Depends(get_db)) -> PretrainedJobOut:
+    items = [item.model_dump() for item in payload.items]
+    row = crud_pretrained.create_job(
+        db,
+        job_type="import",
+        model_version=payload.model_version,
+        source=payload.source,
+        threshold=None,
+        total_items=len(items),
+        processed_items=len(items),
+        status="success",
+        result_preview={
+            "imported": len(items),
+            "skipped": 0,
+            "invalid": 0,
+        },
+    )
+    detections = crud_pretrained.create_detections(db, job_id=row.id, items=items)
+    db.commit()
+    db.refresh(row)
+    return PretrainedJobOut(
+        id=row.id,
+        job_type=row.job_type,
+        status=row.status,
+        model_version=row.model_version,
+        source=row.source,
+        threshold=row.threshold,
+        total_items=row.total_items,
+        processed_items=row.processed_items,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        error_message=row.error_message,
+        result_preview=row.result_preview_json,
+        items=[
+            {
+                "id": d.id,
+                "job_id": d.job_id,
+                "plate_text": d.plate_text,
+                "confidence": d.confidence,
+                "vehicle_type": d.vehicle_type,
+                "event_time": d.event_time,
+                "metadata_json": d.metadata_json,
+                "created_at": d.created_at,
+            }
+            for d in detections
+        ],
+    )
+
+
+@app.get("/api/v1/pretrained/jobs", response_model=PretrainedJobsPageOut)
+def list_pretrained_jobs(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> PretrainedJobsPageOut:
+    rows, total = crud_pretrained.list_jobs(db, page=page, page_size=page_size)
+    return PretrainedJobsPageOut(
+        items=[
+            PretrainedJobOut(
+                id=row.id,
+                job_type=row.job_type,
+                status=row.status,
+                model_version=row.model_version,
+                source=row.source,
+                threshold=row.threshold,
+                total_items=row.total_items,
+                processed_items=row.processed_items,
+                created_at=row.created_at,
+                updated_at=row.updated_at,
+                error_message=row.error_message,
+                result_preview=row.result_preview_json,
+            )
+            for row in rows
+        ],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
+
+
+@app.get("/api/v1/pretrained/jobs/summary", response_model=PretrainedJobsSummaryOut)
+def get_pretrained_jobs_summary(db: Session = Depends(get_db)) -> PretrainedJobsSummaryOut:
+    return PretrainedJobsSummaryOut(**crud_pretrained.get_jobs_summary(db))
+
+
+@app.get("/api/v1/pretrained/jobs/{job_id}", response_model=PretrainedJobOut)
+def get_pretrained_job(job_id: str, db: Session = Depends(get_db)) -> PretrainedJobOut:
+    row = crud_pretrained.get_job(db, job_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="pretrained_job_not_found")
+    detections = crud_pretrained.list_detections_by_job(db, row.id)
+    return PretrainedJobOut(
+        id=row.id,
+        job_type=row.job_type,
+        status=row.status,
+        model_version=row.model_version,
+        source=row.source,
+        threshold=row.threshold,
+        total_items=row.total_items,
+        processed_items=row.processed_items,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        error_message=row.error_message,
+        result_preview=row.result_preview_json,
+        items=[
+            {
+                "id": d.id,
+                "job_id": d.job_id,
+                "plate_text": d.plate_text,
+                "confidence": d.confidence,
+                "vehicle_type": d.vehicle_type,
+                "event_time": d.event_time,
+                "metadata_json": d.metadata_json,
+                "created_at": d.created_at,
+            }
+            for d in detections
+        ],
+    )
 
 
 @app.get("/health")
