@@ -284,6 +284,11 @@ def list_pretrained_jobs(
     )
 
 
+@app.get("/api/v1/pretrained/jobs/summary", response_model=PretrainedJobsSummaryOut)
+def get_pretrained_jobs_summary(db: Session = Depends(get_db)) -> PretrainedJobsSummaryOut:
+    return PretrainedJobsSummaryOut(**crud_pretrained.get_jobs_summary(db))
+
+
 @app.get("/api/v1/pretrained/jobs/{job_id}", response_model=PretrainedJobOut)
 def get_pretrained_job(job_id: str, db: Session = Depends(get_db)) -> PretrainedJobOut:
     row = crud_pretrained.get_job(db, job_id)
@@ -317,11 +322,6 @@ def get_pretrained_job(job_id: str, db: Session = Depends(get_db)) -> Pretrained
             for d in detections
         ],
     )
-
-
-@app.get("/api/v1/pretrained/jobs/summary", response_model=PretrainedJobsSummaryOut)
-def get_pretrained_jobs_summary(db: Session = Depends(get_db)) -> PretrainedJobsSummaryOut:
-    return PretrainedJobsSummaryOut(**crud_pretrained.get_jobs_summary(db))
 
 
 @app.get("/health")
