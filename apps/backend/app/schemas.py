@@ -99,6 +99,12 @@ class ErrorOut(BaseModel):
     detail: str
 
 
+class ApiErrorOut(BaseModel):
+    code: str
+    message: str
+    details: dict | None = None
+
+
 class AccountListItem(BaseModel):
     plate_text: str
     balance_vnd: int

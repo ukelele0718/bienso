@@ -41,13 +41,13 @@
 ## 4) Work Breakdown (code-heavy)
 
 ### 4.1 Backend refactor
-- [ ] Tach module `barrier_rules.py` / `account_state.py`
-- [ ] Tach response mappers cho Event/Barrier/Account
+- [x] Tach module `barrier_rules.py` / `account_state.py`
+- [x] Tach response mappers cho Event/Barrier/Account
 - [ ] Chuan hoa naming va typed aliases
 - [ ] Giam duplicate logic trong CRUD
 
 ### 4.2 API contracts
-- [ ] Them error schema thong nhat (`code`, `message`, `details`)
+- [x] Them error schema thong nhat (`code`, `message`, `details`)
 - [ ] Dong bo Pydantic models voi frontend types
 - [ ] Add examples cho endpoint chinh
 
@@ -59,7 +59,7 @@
 
 ### 4.4 Test & docs
 - [ ] Unit tests cho normalize + barrier rules
-- [ ] Contract tests cho API responses chinh
+- [x] Contract tests cho API responses chinh
 - [ ] Cap nhat docs runbook + test plan seeded
 
 ---
