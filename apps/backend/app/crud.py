@@ -280,10 +280,18 @@ def get_ocr_rate(db: Session) -> float:
 def get_traffic_stats(db: Session, group_by: str) -> list[dict]:
     if group_by not in {"hour", "day"}:
         group_by = "hour"
-    if group_by == "hour":
-        bucket_expr = func.to_char(VehicleEvent.timestamp, "YYYY-MM-DD HH24:00")
+
+    dialect_name = db.bind.dialect.name if db.bind is not None else ""
+    if dialect_name == "sqlite":
+        if group_by == "hour":
+            bucket_expr = func.strftime("%Y-%m-%d %H:00", VehicleEvent.timestamp)
+        else:
+            bucket_expr = func.strftime("%Y-%m-%d", VehicleEvent.timestamp)
     else:
-        bucket_expr = func.to_char(VehicleEvent.timestamp, "YYYY-MM-DD")
+        if group_by == "hour":
+            bucket_expr = func.to_char(VehicleEvent.timestamp, "YYYY-MM-DD HH24:00")
+        else:
+            bucket_expr = func.to_char(VehicleEvent.timestamp, "YYYY-MM-DD")
 
     rows = db.execute(
         select(
