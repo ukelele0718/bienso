@@ -26,6 +26,8 @@ from .schemas import (
     ImportBatchOut,
     MarkRegisteredResponse,
     OcrRateOut,
+    AccountSortBy,
+    SortOrder,
     RealtimeStatOut,
     TrafficStatOut,
     TransactionOut,
@@ -83,9 +85,19 @@ def list_accounts(
     registration_status: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    sort_by: AccountSortBy = Query(default="created_at"),
+    sort_order: SortOrder = Query(default="desc"),
     db: Session = Depends(get_db),
 ) -> AccountListResponse:
-    accounts, total = crud.list_accounts(db, plate, registration_status, page, page_size)
+    accounts, total = crud.list_accounts(
+        db,
+        plate,
+        registration_status,
+        page,
+        page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
     return AccountListResponse(
         items=[
             AccountListItem(
@@ -98,6 +110,8 @@ def list_accounts(
         total=total,
         page=page,
         page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
 

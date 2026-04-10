@@ -88,11 +88,16 @@ export interface AccountListItem {
   registration_status?: 'registered' | 'temporary_registered' | 'unknown' | null;
 }
 
+export type AccountSortBy = 'created_at' | 'balance_vnd' | 'plate_text';
+export type SortOrder = 'asc' | 'desc';
+
 export interface AccountListResponse {
   items: AccountListItem[];
   total: number;
   page: number;
   page_size: number;
+  sort_by: AccountSortBy;
+  sort_order: SortOrder;
 }
 
 export interface AccountsSummaryResponse {

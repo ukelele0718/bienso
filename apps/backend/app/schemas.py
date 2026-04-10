@@ -11,6 +11,8 @@ OcrStatus = Literal["success", "partial", "failed"]
 TransactionType = Literal["init", "event_charge", "manual_adjust"]
 RegistrationStatus = Literal["registered", "temporary_registered", "unknown"]
 BarrierActionType = Literal["open", "hold"]
+AccountSortBy = Literal["created_at", "balance_vnd", "plate_text"]
+SortOrder = Literal["asc", "desc"]
 
 
 class EventIn(BaseModel):
@@ -116,6 +118,8 @@ class AccountListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+    sort_by: AccountSortBy = "created_at"
+    sort_order: SortOrder = "desc"
 
 
 class AccountsSummaryResponse(BaseModel):

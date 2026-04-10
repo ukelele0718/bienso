@@ -48,19 +48,19 @@
 
 ### 4.2 API contracts
 - [x] Them error schema thong nhat (`code`, `message`, `details`)
-- [ ] Dong bo Pydantic models voi frontend types
+- [x] Dong bo Pydantic models voi frontend types
 - [ ] Add examples cho endpoint chinh
 
 ### 4.3 Dashboard polishing
 - [x] Tach component cho Import Summary section
 - [x] Tach component cho Verify Queue section
 - [x] Bo sung empty/loading/error states
-- [ ] Bo sung filter + sort UX cho account list
+- [x] Bo sung filter + sort UX cho account list
 
 ### 4.4 Test & docs
 - [ ] Unit tests cho normalize + barrier rules
 - [x] Contract tests cho API responses chinh
-- [ ] Cap nhat docs runbook + test plan seeded
+- [x] Cap nhat docs runbook + test plan seeded
 
 ---
 

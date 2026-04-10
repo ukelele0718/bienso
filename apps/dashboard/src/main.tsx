@@ -118,6 +118,8 @@ function App(): React.JSX.Element {
   const [accountsPageSize] = useState(10);
   const [accountsPlateFilter, setAccountsPlateFilter] = useState('');
   const [accountsStatusFilter, setAccountsStatusFilter] = useState('');
+  const [accountsSortBy, setAccountsSortBy] = useState<'created_at' | 'balance_vnd' | 'plate_text'>('created_at');
+  const [accountsSortOrder, setAccountsSortOrder] = useState<'asc' | 'desc'>('desc');
   const [verifyQueue, setVerifyQueue] = useState<BarrierActionOut[]>([]);
   const [verifyingPlate, setVerifyingPlate] = useState<string | null>(null);
   const [importBatches, setImportBatches] = useState<ImportBatchOut[]>([]);
@@ -134,7 +136,7 @@ function App(): React.JSX.Element {
   // Reload accounts list when filters or page changes
   useEffect(() => {
     void loadAccountsList();
-  }, [accountsPage, accountsStatusFilter]);
+  }, [accountsPage, accountsStatusFilter, accountsSortBy, accountsSortOrder]);
 
   async function loadRealtime(): Promise<void> {
     try {
@@ -173,13 +175,15 @@ function App(): React.JSX.Element {
         registration_status: accountsStatusFilter || undefined,
         page: accountsPage,
         page_size: accountsPageSize,
+        sort_by: accountsSortBy,
+        sort_order: accountsSortOrder,
       });
       setAccountsList(response.items);
       setAccountsTotal(response.total);
     } catch (err) {
       console.error('Failed to load accounts list:', err);
     }
-  }, [accountsPlateFilter, accountsStatusFilter, accountsPage, accountsPageSize]);
+  }, [accountsPlateFilter, accountsStatusFilter, accountsPage, accountsPageSize, accountsSortBy, accountsSortOrder]);
 
   async function loadVerifyQueue(): Promise<void> {
     try {
@@ -452,6 +456,31 @@ function App(): React.JSX.Element {
                 <option value="">All Status</option>
                 <option value="registered">Registered</option>
                 <option value="temporary_registered">Temporary</option>
+              </select>
+              <select
+                value={accountsSortBy}
+                onChange={(e) => {
+                  setAccountsSortBy(e.target.value as 'created_at' | 'balance_vnd' | 'plate_text');
+                  setAccountsPage(1);
+                }}
+                style={{ ...inputStyle, minWidth: 160 }}
+                aria-label="Sort by"
+              >
+                <option value="created_at">Sort: Created At</option>
+                <option value="balance_vnd">Sort: Balance</option>
+                <option value="plate_text">Sort: Plate</option>
+              </select>
+              <select
+                value={accountsSortOrder}
+                onChange={(e) => {
+                  setAccountsSortOrder(e.target.value as 'asc' | 'desc');
+                  setAccountsPage(1);
+                }}
+                style={{ ...inputStyle, minWidth: 120 }}
+                aria-label="Sort order"
+              >
+                <option value="desc">Desc</option>
+                <option value="asc">Asc</option>
               </select>
               <button type="button" onClick={handleAccountsSearch} style={buttonStyle}>
                 Search

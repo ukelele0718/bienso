@@ -79,12 +79,16 @@ export async function fetchAccounts(params?: {
   registration_status?: string;
   page?: number;
   page_size?: number;
+  sort_by?: 'created_at' | 'balance_vnd' | 'plate_text';
+  sort_order?: 'asc' | 'desc';
 }): Promise<AccountListResponse> {
   const query = new URLSearchParams();
   if (params?.plate) query.set('plate', params.plate);
   if (params?.registration_status) query.set('registration_status', params.registration_status);
   if (params?.page) query.set('page', String(params.page));
   if (params?.page_size) query.set('page_size', String(params.page_size));
+  if (params?.sort_by) query.set('sort_by', params.sort_by);
+  if (params?.sort_order) query.set('sort_order', params.sort_order);
 
   const suffix = query.toString() ? `?${query.toString()}` : '';
   const res = await fetch(`${BASE_URL}/api/v1/accounts${suffix}`);

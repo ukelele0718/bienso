@@ -279,6 +279,8 @@ def list_accounts(
     registration_status: str | None,
     page: int,
     page_size: int,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
 ) -> tuple[list[Account], int]:
     stmt = select(Account)
     if plate:
@@ -291,7 +293,19 @@ def list_accounts(
     total = db.execute(count_stmt).scalar_one()
 
     offset = (page - 1) * page_size
-    stmt = stmt.order_by(Account.created_at.desc()).offset(offset).limit(page_size)
+
+    sort_mapping = {
+        "created_at": Account.created_at,
+        "balance_vnd": Account.balance_vnd,
+        "plate_text": Account.plate_text,
+    }
+    sort_column = sort_mapping.get(sort_by, Account.created_at)
+    if sort_order == "asc":
+        stmt = stmt.order_by(sort_column.asc())
+    else:
+        stmt = stmt.order_by(sort_column.desc())
+
+    stmt = stmt.offset(offset).limit(page_size)
     accounts = list(db.execute(stmt).scalars().all())
 
     return accounts, total
