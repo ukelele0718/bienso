@@ -2,7 +2,7 @@
 
 ## 1) Unit tests
 
-- [ ] test_barrier_unit.py:
+- [x] test_barrier_unit.py:
   - registered in/out -> open
   - temporary out -> hold + verify
   - unknown in -> auto temporary + open
@@ -15,7 +15,7 @@
 
 - [x] Error contract test:
   - 404 account -> `ApiErrorOut`
-- [ ] Account list contract test:
+- [x] Account list contract test:
   - response co `sort_by`, `sort_order`
   - sort/filter params duoc nhan dung
 
@@ -29,12 +29,12 @@
 
 ## 4) Integration sanity
 
-- [ ] API `/api/v1/accounts` voi sort/filter khong loi
-- [ ] API error schema thong nhat tren endpoint chinh
+- [x] API `/api/v1/accounts` voi sort/filter khong loi
+- [x] API error schema thong nhat tren endpoint chinh
 
 ## 5) Regression
 
-- [ ] pytest pass local
+- [x] pytest pass local
 - [ ] seeded flow script pass (optional when time allows)
 
 ---
@@ -45,4 +45,6 @@
 | --- | --- | --- |
 | Error contract | PASS | `test_api_error_contract.py` |
 | Account sort/filter contract | PASS | `test_accounts_contract.py` validates `sort_by/sort_order` and ordering |
+| Barrier rules quick unit | PASS | `test_barrier_unit.py` |
+| Quick suite (seeded + contract) | PASS | `7 passed, 6 warnings` via `python -m pytest ...` |
 | Dashboard sort/filter UX | PENDING | Manual check |

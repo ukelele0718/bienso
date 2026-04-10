@@ -69,7 +69,7 @@
 - [x] Chinh sua 20+ file (backend + dashboard + test + docs).
 - [x] Lint/typecheck pass.
 - [x] Contract backend/frontend khong lech.
-- [ ] Seeded flow van pass sau refactor.
+- [x] Seeded flow van pass sau refactor.
 
 ---
 
