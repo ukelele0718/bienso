@@ -52,9 +52,9 @@
 - [ ] Add examples cho endpoint chinh
 
 ### 4.3 Dashboard polishing
-- [ ] Tach component cho Import Summary section
-- [ ] Tach component cho Verify Queue section
-- [ ] Bo sung empty/loading/error states
+- [x] Tach component cho Import Summary section
+- [x] Tach component cho Verify Queue section
+- [x] Bo sung empty/loading/error states
 - [ ] Bo sung filter + sort UX cho account list
 
 ### 4.4 Test & docs

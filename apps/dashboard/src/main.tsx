@@ -25,6 +25,8 @@ import type {
   RealtimeStatOut,
   TrafficStatOut,
 } from './api-types';
+import { ImportSummarySection } from './components/ImportSummarySection';
+import { VerifyQueueSection } from './components/VerifyQueueSection';
 
 const cardStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -526,139 +528,24 @@ function App(): React.JSX.Element {
         </div>
       </section>
 
-      {/* Import Summary Section */}
-      <section style={{ marginTop: 24 }}>
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0 }}>Import Summary</h3>
-            <button type="button" onClick={loadImportSummary} style={buttonStyle}>
-              Refresh Import Data
-            </button>
-          </div>
+      <ImportSummarySection
+        summary={importSummary}
+        batches={importBatches}
+        onRefresh={() => {
+          void loadImportSummary();
+        }}
+      />
 
-          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', marginBottom: 16 }}>
-            <div style={{ ...cardStyle, boxShadow: 'none', border: '1px solid #e2e8f0' }}>
-              <p style={{ margin: 0, color: '#64748b' }}>Total Batches</p>
-              <h4 style={{ margin: '8px 0 0' }}>{importSummary?.total_batches ?? '--'}</h4>
-            </div>
-            <div style={{ ...cardStyle, boxShadow: 'none', border: '1px solid #e2e8f0' }}>
-              <p style={{ margin: 0, color: '#64748b' }}>Imported</p>
-              <h4 style={{ margin: '8px 0 0' }}>{importSummary?.total_imported ?? '--'}</h4>
-            </div>
-            <div style={{ ...cardStyle, boxShadow: 'none', border: '1px solid #e2e8f0' }}>
-              <p style={{ margin: 0, color: '#64748b' }}>Skipped</p>
-              <h4 style={{ margin: '8px 0 0' }}>{importSummary?.total_skipped ?? '--'}</h4>
-            </div>
-            <div style={{ ...cardStyle, boxShadow: 'none', border: '1px solid #e2e8f0' }}>
-              <p style={{ margin: 0, color: '#64748b' }}>Invalid</p>
-              <h4 style={{ margin: '8px 0 0' }}>{importSummary?.total_invalid ?? '--'}</h4>
-            </div>
-          </div>
-
-          {importBatches.length === 0 ? (
-            <p style={{ color: '#94a3b8' }}>No import batches found</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={tableHeaderStyle}>Batch ID</th>
-                  <th style={tableHeaderStyle}>Source</th>
-                  <th style={tableHeaderStyle}>Seed Group</th>
-                  <th style={tableHeaderStyle}>Imported</th>
-                  <th style={tableHeaderStyle}>Skipped</th>
-                  <th style={tableHeaderStyle}>Invalid</th>
-                  <th style={tableHeaderStyle}>Created At</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importBatches.map((batch) => (
-                  <tr key={batch.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                    <td style={{ ...tableCellStyle, fontFamily: 'monospace' }}>{batch.id.slice(0, 8)}...</td>
-                    <td style={tableCellStyle}>{batch.source}</td>
-                    <td style={tableCellStyle}>{batch.seed_group ?? '--'}</td>
-                    <td style={tableCellStyle}>{batch.imported_count}</td>
-                    <td style={tableCellStyle}>{batch.skipped_count}</td>
-                    <td style={tableCellStyle}>{batch.invalid_count}</td>
-                    <td style={tableCellStyle}>{new Date(batch.created_at).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
-
-      {/* Verify Queue Section */}
-      <section style={{ marginTop: 24 }}>
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0 }}>
-              Verification Queue
-              {verifyQueue.length > 0 && (
-                <span
-                  style={{
-                    marginLeft: 8,
-                    background: '#fef3c7',
-                    color: '#92400e',
-                    padding: '2px 8px',
-                    borderRadius: 12,
-                    fontSize: '14px',
-                    fontWeight: 600,
-                  }}
-                >
-                  {verifyQueue.length}
-                </span>
-              )}
-            </h3>
-            <button type="button" onClick={loadVerifyQueue} style={buttonStyle}>
-              Refresh Queue
-            </button>
-          </div>
-
-          {verifyQueue.length === 0 ? (
-            <p style={{ color: '#94a3b8' }}>No actions pending verification</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={tableHeaderStyle}>Plate</th>
-                  <th style={tableHeaderStyle}>Reason</th>
-                  <th style={tableHeaderStyle}>Time</th>
-                  <th style={tableHeaderStyle}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {verifyQueue.map((action) => (
-                  <tr key={action.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                    <td style={{ ...tableCellStyle, fontWeight: 600, fontFamily: 'monospace' }}>
-                      {action.plate_text ?? '--'}
-                    </td>
-                    <td style={tableCellStyle}>
-                      <span style={{ color: '#dc2626' }}>{action.barrier_reason}</span>
-                    </td>
-                    <td style={tableCellStyle}>
-                      {new Date(action.created_at).toLocaleString()}
-                    </td>
-                    <td style={tableCellStyle}>
-                      <button
-                        type="button"
-                        onClick={() => action.plate_text && handleVerify(action.plate_text)}
-                        disabled={verifyingPlate === action.plate_text || !action.plate_text}
-                        style={{
-                          ...primaryButtonStyle,
-                          opacity: verifyingPlate === action.plate_text ? 0.5 : 1,
-                        }}
-                      >
-                        {verifyingPlate === action.plate_text ? 'Verifying...' : 'Verify'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
+      <VerifyQueueSection
+        queue={verifyQueue}
+        verifyingPlate={verifyingPlate}
+        onRefresh={() => {
+          void loadVerifyQueue();
+        }}
+        onVerify={(plate) => {
+          void handleVerify(plate);
+        }}
+      />
     </div>
   );
 }
