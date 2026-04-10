@@ -24,7 +24,11 @@ Mỗi khi có conflict trong quá trình merge/rebase/cherry-pick:
 
 | ID | Date | Area | Files | Conflict Type | Root Cause | Resolution Decision | Commit | Verify Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CF-001 | 2026-04-10 | setup | _n/a_ | template-init | Create initial tracking template | Baseline document created | _pending_ | PENDING | Start logging from first merge action |
+| CF-001 | 2026-04-10 | setup | _n/a_ | template-init | Create initial tracking template | Baseline document created | f58b532 | DONE | Initialized before merge rehearsal |
+| CF-002 | 2026-04-10 | backend-core | `apps/backend/app/main.py`, `apps/backend/app/schemas.py` | content | Seeded error-contract + sort aliases overlapped with pretrained endpoints/schemas | Kept union model: retained seeded `ApiErrorOut` + account sort aliases and added pretrained contracts/routes in same module | `merge-rehearsal local` | DONE | Verified by quick matrix pass |
+| CF-003 | 2026-04-10 | frontend-core | `apps/dashboard/src/api-types.ts`, `apps/dashboard/src/api.ts`, `apps/dashboard/src/main.tsx` | content | Seeded dashboard enhancements and pretrained drawer/apis edited same regions | Merged both feature sets: seeded account/import/verify UX + pretrained job APIs/types/drawer support | `merge-rehearsal local` | DONE | No conflict markers left, tests green |
+| CF-004 | 2026-04-10 | planning-docs | `.planning/2026-03-29-vnlp-seeded-backend-dashboard/*`, `.planning/branch-plan-*/PLAN.md` | add/add | Parallel planning files introduced in both branches | Resolved using integration-branch versions to avoid doc churn during rehearsal | `merge-rehearsal local` | DONE | Can revisit final doc harmonization later |
+| CF-005 | 2026-04-10 | test-matrix | `apps/backend/tests/test_pretrained_contract.py` | coverage-gap | Integration checklist lacked explicit pretrained contract assertion | Added integration contract test for `/api/v1/pretrained/jobs/summary` | pending commit | DONE | Included in 11-pass quick matrix |
 
 ---
 
