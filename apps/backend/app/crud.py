@@ -3,12 +3,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 import re
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .config import settings
 from .models import Account, AuditLog, BarrierAction, Camera, ImportBatch, PlateRead, Transaction, VehicleEvent
+from .schemas import AccountSortBy, SortOrder
 from .services import decide_barrier
 
 
@@ -19,6 +21,33 @@ class NotFoundError(Exception):
 def normalize_plate_text(plate_text: str) -> str:
     normalized = re.sub(r"[^A-Za-z0-9]", "", plate_text or "").upper()
     return normalized
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
+def _new_id() -> str:
+    return str(uuid4())
+
+
+def _append_audit_log(
+    db: Session,
+    *,
+    action: str,
+    user_id: str | None,
+    metadata_json: dict[str, Any],
+    created_at: datetime,
+) -> None:
+    db.add(
+        AuditLog(
+            id=_new_id(),
+            user_id=user_id,
+            action=action,
+            metadata_json=metadata_json,
+            created_at=created_at,
+        )
+    )
 
 
 def create_event(db: Session, payload: dict) -> tuple[VehicleEvent, BarrierAction | None]:
@@ -32,13 +61,13 @@ def create_event(db: Session, payload: dict) -> tuple[VehicleEvent, BarrierActio
             location="auto_seeded_mode",
             stream_url=None,
             is_active=True,
-            created_at=datetime.now(UTC),
+            created_at=_utcnow(),
         )
         db.add(camera)
         db.flush()
 
     event = VehicleEvent(
-        id=str(uuid4()),
+        id=_new_id(),
         camera_id=camera_id,
         timestamp=payload["timestamp"],
         direction=payload["direction"],
@@ -107,20 +136,18 @@ def create_event(db: Session, payload: dict) -> tuple[VehicleEvent, BarrierActio
         )
         db.add(barrier_action_row)
 
-        db.add(
-            AuditLog(
-                id=str(uuid4()),
-                user_id=None,
-                action="barrier_decision",
-                metadata_json={
-                    "event_id": event.id,
-                    "plate_text": plate_text,
-                    "barrier_action": decision.barrier_action,
-                    "barrier_reason": decision.barrier_reason,
-                    "needs_verification": decision.needs_verification,
-                },
-                created_at=payload["timestamp"],
-            )
+        _append_audit_log(
+            db,
+            action="barrier_decision",
+            user_id=None,
+            metadata_json={
+                "event_id": event.id,
+                "plate_text": plate_text,
+                "barrier_action": decision.barrier_action,
+                "barrier_reason": decision.barrier_reason,
+                "needs_verification": decision.needs_verification,
+            },
+            created_at=payload["timestamp"],
         )
 
         account.balance_vnd -= settings.charge_per_event_vnd
@@ -216,18 +243,16 @@ def verify_latest_hold(db: Session, plate_text: str, actor: str) -> BarrierActio
     row.verified_by = actor
     row.verified_at = datetime.now(UTC)
 
-    db.add(
-        AuditLog(
-            id=str(uuid4()),
-            user_id=actor,
-            action="barrier_verify",
-            metadata_json={
-                "plate_text": plate_text,
-                "event_id": row.event_id,
-                "result": "open",
-            },
-            created_at=datetime.now(UTC),
-        )
+    _append_audit_log(
+        db,
+        action="barrier_verify",
+        user_id=actor,
+        metadata_json={
+            "plate_text": plate_text,
+            "event_id": row.event_id,
+            "result": "open",
+        },
+        created_at=_utcnow(),
     )
 
     db.commit()
@@ -279,8 +304,8 @@ def list_accounts(
     registration_status: str | None,
     page: int,
     page_size: int,
-    sort_by: str = "created_at",
-    sort_order: str = "desc",
+    sort_by: AccountSortBy = "created_at",
+    sort_order: SortOrder = "desc",
 ) -> tuple[list[Account], int]:
     stmt = select(Account)
     if plate:
@@ -354,16 +379,14 @@ def mark_account_registered(db: Session, plate_text: str) -> Account:
     account = get_account(db, plate_text)
     if account.registration_status != "registered":
         account.registration_status = "registered"
-        account.updated_at = datetime.utcnow()
+        account.updated_at = _utcnow()
         db.add(account)
-        db.add(
-            AuditLog(
-                id=str(uuid4()),
-                user_id=None,
-                action="account_mark_registered",
-                metadata_json={"plate_text": plate_text},
-                created_at=datetime.utcnow(),
-            )
+        _append_audit_log(
+            db,
+            action="account_mark_registered",
+            user_id=None,
+            metadata_json={"plate_text": plate_text},
+            created_at=_utcnow(),
         )
         db.commit()
         db.refresh(account)
@@ -379,32 +402,30 @@ def adjust_account_balance(
 ) -> tuple[Account, Transaction]:
     account = get_account(db, plate_text)
     account.balance_vnd += amount_vnd
-    account.updated_at = datetime.utcnow()
+    account.updated_at = _utcnow()
 
     tx = Transaction(
-        id=str(uuid4()),
+        id=_new_id(),
         account_id=account.id,
         event_id=None,
         amount_vnd=amount_vnd,
         balance_after_vnd=account.balance_vnd,
         type="manual_adjust",
-        created_at=datetime.utcnow(),
+        created_at=_utcnow(),
     )
 
     db.add(account)
     db.add(tx)
-    db.add(
-        AuditLog(
-            id=str(uuid4()),
-            user_id=actor,
-            action="account_adjust_balance",
-            metadata_json={
-                "plate_text": plate_text,
-                "amount_vnd": amount_vnd,
-                "reason": reason,
-            },
-            created_at=datetime.utcnow(),
-        )
+    _append_audit_log(
+        db,
+        action="account_adjust_balance",
+        user_id=actor,
+        metadata_json={
+            "plate_text": plate_text,
+            "amount_vnd": amount_vnd,
+            "reason": reason,
+        },
+        created_at=_utcnow(),
     )
     db.commit()
     db.refresh(account)

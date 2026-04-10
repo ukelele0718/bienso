@@ -43,8 +43,8 @@
 ### 4.1 Backend refactor
 - [x] Tach module `barrier_rules.py` / `account_state.py`
 - [x] Tach response mappers cho Event/Barrier/Account
-- [ ] Chuan hoa naming va typed aliases
-- [ ] Giam duplicate logic trong CRUD
+- [x] Chuan hoa naming va typed aliases
+- [x] Giam duplicate logic trong CRUD
 
 ### 4.2 API contracts
 - [x] Them error schema thong nhat (`code`, `message`, `details`)
@@ -66,9 +66,9 @@
 
 ## 5) Tieu chi hoan thanh
 
-- [ ] Chinh sua 20+ file (backend + dashboard + test + docs).
-- [ ] Lint/typecheck pass.
-- [ ] Contract backend/frontend khong lech.
+- [x] Chinh sua 20+ file (backend + dashboard + test + docs).
+- [x] Lint/typecheck pass.
+- [x] Contract backend/frontend khong lech.
 - [ ] Seeded flow van pass sau refactor.
 
 ---
