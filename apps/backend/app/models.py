@@ -134,3 +134,42 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class PretrainedJob(Base):
+    __tablename__ = "pretrained_jobs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid4()))
+    job_type: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    model_version: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    threshold: Mapped[float | None] = mapped_column(nullable=True)
+    total_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    processed_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    result_preview_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint("job_type IN ('infer','import')", name="ck_pretrained_jobs_job_type"),
+        CheckConstraint("status IN ('queued','running','success','failed')", name="ck_pretrained_jobs_status"),
+    )
+
+
+class PretrainedDetection(Base):
+    __tablename__ = "pretrained_detections"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid4()))
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("pretrained_jobs.id", ondelete="CASCADE"), nullable=False)
+    plate_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence: Mapped[float | None] = mapped_column(nullable=True)
+    vehicle_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    event_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint("vehicle_type IN ('motorbike','car')", name="ck_pretrained_detections_vehicle_type"),
+    )

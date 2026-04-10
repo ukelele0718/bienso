@@ -13,6 +13,8 @@ RegistrationStatus = Literal["registered", "temporary_registered", "unknown"]
 BarrierActionType = Literal["open", "hold"]
 AccountSortBy = Literal["created_at", "balance_vnd", "plate_text"]
 SortOrder = Literal["asc", "desc"]
+PretrainedJobType = Literal["infer", "import"]
+PretrainedJobStatus = Literal["queued", "running", "success", "failed"]
 
 
 class EventIn(BaseModel):
@@ -161,3 +163,64 @@ class AdjustBalanceResponse(BaseModel):
     balance_vnd: int
     delta_vnd: int
     transaction_id: str
+
+
+class PretrainedInferIn(BaseModel):
+    model_version: str = "mock-v1"
+    source: str
+    threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class PretrainedImportItemIn(BaseModel):
+    plate_text: str
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    vehicle_type: VehicleType | None = None
+    event_time: datetime | None = None
+
+
+class PretrainedImportIn(BaseModel):
+    model_version: str = "mock-v1"
+    source: str
+    items: list[PretrainedImportItemIn] = Field(default_factory=list)
+
+
+class PretrainedDetectionOut(BaseModel):
+    id: str
+    job_id: str
+    plate_text: str | None = None
+    confidence: float | None = None
+    vehicle_type: VehicleType | None = None
+    event_time: datetime | None = None
+    metadata_json: dict | None = None
+    created_at: datetime
+
+
+class PretrainedJobOut(BaseModel):
+    id: str
+    job_type: PretrainedJobType
+    status: PretrainedJobStatus
+    model_version: str
+    source: str
+    threshold: float | None
+    total_items: int
+    processed_items: int
+    created_at: datetime
+    updated_at: datetime
+    error_message: str | None = None
+    result_preview: dict | None = None
+    items: list[PretrainedDetectionOut] | None = None
+
+
+class PretrainedJobsPageOut(BaseModel):
+    items: list[PretrainedJobOut]
+    page: int
+    page_size: int
+    total: int
+
+
+class PretrainedJobsSummaryOut(BaseModel):
+    total: int
+    queued: int
+    running: int
+    success: int
+    failed: int

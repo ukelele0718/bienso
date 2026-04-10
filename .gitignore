@@ -24,6 +24,7 @@ Thumbs.db
 # Local tooling
 .tmp/
 .artifacts/
+.agents/
 .cursor/
 .cursor - Copy/
 runs/

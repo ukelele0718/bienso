@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from . import crud
+from . import crud, crud_pretrained
 from .response_mappers import to_account_out, to_barrier_action_out, to_event_out
 from .db import get_db
 from .schemas import (
@@ -28,6 +28,11 @@ from .schemas import (
     OcrRateOut,
     AccountSortBy,
     SortOrder,
+    PretrainedImportIn,
+    PretrainedJobOut,
+    PretrainedJobsPageOut,
+    PretrainedJobsSummaryOut,
+    PretrainedInferIn,
     RealtimeStatOut,
     TrafficStatOut,
     TransactionOut,
@@ -303,6 +308,149 @@ def get_error_sample() -> ErrorOut:
     return ErrorOut(detail="not_implemented")
 
 
+@app.post("/api/v1/pretrained/infer", response_model=PretrainedJobOut)
+def create_pretrained_infer_job(payload: PretrainedInferIn, db: Session = Depends(get_db)) -> PretrainedJobOut:
+    row = crud_pretrained.create_job(
+        db,
+        job_type="infer",
+        model_version=payload.model_version,
+        source=payload.source,
+        threshold=payload.threshold,
+        total_items=1,
+        processed_items=1,
+        status="success",
+        result_preview={
+            "plate_text": "MOCK12345",
+            "confidence": 0.92,
+            "vehicle_type": "motorbike",
+        },
+    )
+    db.commit()
+    db.refresh(row)
+    return PretrainedJobOut(**row.__dict__)
+
+
+@app.post("/api/v1/pretrained/import", response_model=PretrainedJobOut)
+def create_pretrained_import_job(payload: PretrainedImportIn, db: Session = Depends(get_db)) -> PretrainedJobOut:
+    items = [item.model_dump() for item in payload.items]
+    row = crud_pretrained.create_job(
+        db,
+        job_type="import",
+        model_version=payload.model_version,
+        source=payload.source,
+        threshold=None,
+        total_items=len(items),
+        processed_items=len(items),
+        status="success",
+        result_preview={
+            "imported": len(items),
+            "skipped": 0,
+            "invalid": 0,
+        },
+    )
+    detections = crud_pretrained.create_detections(db, job_id=row.id, items=items)
+    db.commit()
+    db.refresh(row)
+    return PretrainedJobOut(
+        id=row.id,
+        job_type=row.job_type,
+        status=row.status,
+        model_version=row.model_version,
+        source=row.source,
+        threshold=row.threshold,
+        total_items=row.total_items,
+        processed_items=row.processed_items,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        error_message=row.error_message,
+        result_preview=row.result_preview_json,
+        items=[
+            {
+                "id": d.id,
+                "job_id": d.job_id,
+                "plate_text": d.plate_text,
+                "confidence": d.confidence,
+                "vehicle_type": d.vehicle_type,
+                "event_time": d.event_time,
+                "metadata_json": d.metadata_json,
+                "created_at": d.created_at,
+            }
+            for d in detections
+        ],
+    )
+
+
+@app.get("/api/v1/pretrained/jobs", response_model=PretrainedJobsPageOut)
+def list_pretrained_jobs(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> PretrainedJobsPageOut:
+    rows, total = crud_pretrained.list_jobs(db, page=page, page_size=page_size)
+    return PretrainedJobsPageOut(
+        items=[
+            PretrainedJobOut(
+                id=row.id,
+                job_type=row.job_type,
+                status=row.status,
+                model_version=row.model_version,
+                source=row.source,
+                threshold=row.threshold,
+                total_items=row.total_items,
+                processed_items=row.processed_items,
+                created_at=row.created_at,
+                updated_at=row.updated_at,
+                error_message=row.error_message,
+                result_preview=row.result_preview_json,
+            )
+            for row in rows
+        ],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
+
+
+@app.get("/api/v1/pretrained/jobs/summary", response_model=PretrainedJobsSummaryOut)
+def get_pretrained_jobs_summary(db: Session = Depends(get_db)) -> PretrainedJobsSummaryOut:
+    return PretrainedJobsSummaryOut(**crud_pretrained.get_jobs_summary(db))
+
+
+@app.get("/api/v1/pretrained/jobs/{job_id}", response_model=PretrainedJobOut)
+def get_pretrained_job(job_id: str, db: Session = Depends(get_db)) -> PretrainedJobOut:
+    row = crud_pretrained.get_job(db, job_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="pretrained_job_not_found")
+    detections = crud_pretrained.list_detections_by_job(db, row.id)
+    return PretrainedJobOut(
+        id=row.id,
+        job_type=row.job_type,
+        status=row.status,
+        model_version=row.model_version,
+        source=row.source,
+        threshold=row.threshold,
+        total_items=row.total_items,
+        processed_items=row.processed_items,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        error_message=row.error_message,
+        result_preview=row.result_preview_json,
+        items=[
+            {
+                "id": d.id,
+                "job_id": d.job_id,
+                "plate_text": d.plate_text,
+                "confidence": d.confidence,
+                "vehicle_type": d.vehicle_type,
+                "event_time": d.event_time,
+                "metadata_json": d.metadata_json,
+                "created_at": d.created_at,
+            }
+            for d in detections
+        ],
+    )
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "time": datetime.utcnow().isoformat()}
+    return {"status": "ok", "time": datetime.now(UTC).isoformat()}

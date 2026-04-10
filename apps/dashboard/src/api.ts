@@ -7,6 +7,11 @@ import type {
   ImportBatchesSummaryResponse,
   ImportBatchOut,
   OcrRateOut,
+  PretrainedImportIn,
+  PretrainedInferIn,
+  PretrainedJobOut,
+  PretrainedJobsPageOut,
+  PretrainedJobsSummaryOut,
   RealtimeStatOut,
   TrafficStatOut,
   TransactionOut,
@@ -118,4 +123,38 @@ export async function verifyBarrier(plate: string, actor: string): Promise<Barri
     method: 'POST',
   });
   return parseJson<BarrierActionOut>(res, 'Failed to verify barrier action');
+}
+
+export async function createPretrainedInferJob(payload: PretrainedInferIn): Promise<PretrainedJobOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/infer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<PretrainedJobOut>(res, 'Failed to create pretrained infer job');
+}
+
+export async function createPretrainedImportJob(payload: PretrainedImportIn): Promise<PretrainedJobOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<PretrainedJobOut>(res, 'Failed to create pretrained import job');
+}
+
+export async function fetchPretrainedJobs(page = 1, pageSize = 20): Promise<PretrainedJobsPageOut> {
+  const query = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/jobs?${query.toString()}`);
+  return parseJson<PretrainedJobsPageOut>(res, 'Failed to fetch pretrained jobs');
+}
+
+export async function fetchPretrainedJob(jobId: string): Promise<PretrainedJobOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/jobs/${encodeURIComponent(jobId)}`);
+  return parseJson<PretrainedJobOut>(res, 'Failed to fetch pretrained job detail');
+}
+
+export async function fetchPretrainedJobsSummary(): Promise<PretrainedJobsSummaryOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/jobs/summary`);
+  return parseJson<PretrainedJobsSummaryOut>(res, 'Failed to fetch pretrained jobs summary');
 }
