@@ -44,5 +44,5 @@
 | Test case | Status | Notes |
 | --- | --- | --- |
 | Error contract | PASS | `test_api_error_contract.py` |
-| Account sort/filter contract | PENDING | Need API assertion | 
+| Account sort/filter contract | PASS | `test_accounts_contract.py` validates `sort_by/sort_order` and ordering |
 | Dashboard sort/filter UX | PENDING | Manual check |

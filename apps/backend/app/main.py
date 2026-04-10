@@ -79,7 +79,34 @@ def list_events(
     return result
 
 
-@app.get("/api/v1/accounts", response_model=AccountListResponse)
+@app.get(
+    "/api/v1/accounts",
+    response_model=AccountListResponse,
+    responses={
+        200: {
+            "description": "List accounts with filters and sorting",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "items": [
+                            {
+                                "plate_text": "51G12345",
+                                "balance_vnd": 47000,
+                                "registration_status": "registered",
+                            }
+                        ],
+                        "total": 123,
+                        "page": 1,
+                        "page_size": 20,
+                        "sort_by": "created_at",
+                        "sort_order": "desc",
+                    }
+                }
+            },
+        },
+        400: {"model": ApiErrorOut},
+    },
+)
 def list_accounts(
     plate: str | None = Query(default=None),
     registration_status: str | None = Query(default=None),
@@ -219,7 +246,32 @@ def list_barrier_actions(plate: str | None = Query(default=None), db: Session = 
     return [to_barrier_action_out(row) for row in rows]
 
 
-@app.post("/api/v1/barrier-actions/verify", response_model=BarrierActionOut)
+@app.post(
+    "/api/v1/barrier-actions/verify",
+    response_model=BarrierActionOut,
+    responses={
+        200: {
+            "description": "Verify latest hold action for a plate",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": "uuid",
+                        "event_id": "uuid",
+                        "plate_text": "51G12345",
+                        "registration_status": "temporary_registered",
+                        "barrier_action": "open",
+                        "barrier_reason": "manual_verify_open",
+                        "needs_verification": False,
+                        "verified_by": "dashboard_operator",
+                        "verified_at": "2026-04-10T10:00:00Z",
+                        "created_at": "2026-04-10T09:59:00Z",
+                    }
+                }
+            },
+        },
+        404: {"model": ApiErrorOut},
+    },
+)
 def verify_barrier_action(plate: str, actor: str, db: Session = Depends(get_db)) -> BarrierActionOut:
     try:
         row = crud.verify_latest_hold(db, plate, actor)

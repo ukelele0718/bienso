@@ -49,7 +49,7 @@
 ### 4.2 API contracts
 - [x] Them error schema thong nhat (`code`, `message`, `details`)
 - [x] Dong bo Pydantic models voi frontend types
-- [ ] Add examples cho endpoint chinh
+- [x] Add examples cho endpoint chinh
 
 ### 4.3 Dashboard polishing
 - [x] Tach component cho Import Summary section
