@@ -6,8 +6,8 @@ from .schemas import AccountOut, BarrierActionOut, EventOut
 
 def to_event_out(event: VehicleEvent, plate_read: PlateRead | None, barrier_action: BarrierAction | None) -> EventOut:
     return EventOut(
-        id=event.id,
-        camera_id=event.camera_id,
+        id=str(event.id),
+        camera_id=str(event.camera_id),
         timestamp=event.timestamp,
         direction=event.direction,
         vehicle_type=event.vehicle_type,
