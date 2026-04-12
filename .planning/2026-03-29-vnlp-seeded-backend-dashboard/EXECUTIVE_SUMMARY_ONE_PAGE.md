@@ -1,8 +1,8 @@
 # EXECUTIVE SUMMARY (1 PAGE)
 
-**Du an**: VNLP Seeded Backend Dashboard  
-**Thoi diem bao cao**: 2026-04-05  
-**Muc tieu**: Van hanh duoc luong backend + dashboard theo seeded mode, khong phu thuoc OCR/AI runtime, co kha nang demo va regression on dinh.
+**Du an**: VNLP Seeded Backend Dashboard + Pretrained Integration  
+**Thoi diem bao cao**: 2026-04-13 (cap nhat tu 2026-04-05)  
+**Muc tieu**: Van hanh duoc luong backend + dashboard theo seeded mode + pretrained flow, khong phu thuoc OCR/AI runtime, co kha nang demo va regression on dinh.
 
 ---
 
@@ -90,4 +90,27 @@ Cac blocker lon da duoc dong:
 
 ---
 
-**Ket luan**: Du an da dat muc tieu MVP seeded mode voi do on dinh tot, test pass day du, va co day du tai lieu/cong cu van hanh de trinh bay va ban giao.
+---
+
+## 7) Cap nhat Integration (2026-04-13)
+
+### Ket qua stabilization punch-list
+- `datetime.utcnow` -> `datetime.now(UTC)`: **0 instances con lai** tren ca 3 nhanh
+- 9 test failures do normalize mismatch: **da fix** (root cause: `normalize_plate_text` strip `-`)
+- mypy: **configured va pass** (0 errors, 9 source files)
+- Pretrained tests: **+19 tests moi** (persistence + API contract)
+
+### Test matrix hien tai
+| Nhanh | Tests | Ket qua |
+|---|---|---|
+| seeded | 51 | 51/51 pass |
+| pretrained | 33 | 33/33 pass |
+| integration | 40 | 40/40 pass + tsc clean |
+
+### Ops hardening
+- Quick-run scripts: `quick-backend.sh`, `quick-dashboard.sh`, `quick-test.sh`
+- Readiness report: v5 (98/100), GO decision maintained
+
+---
+
+**Ket luan**: Du an da dat muc tieu MVP seeded + pretrained mode voi do on dinh tot. Test pass day du tren ca 3 nhanh. Co day du tai lieu, scripts, va cong cu van hanh de trinh bay va ban giao. San sang chuyen Phase 4 (merge to main).

@@ -1,9 +1,9 @@
-# INTEGRATION READINESS REPORT (v4)
+# INTEGRATION READINESS REPORT (v5)
 
 **Branch**: `feat/integration-seeded-pretrained`  
-**Version**: v4  
-**Date**: 2026-04-10  
-**Scope**: Final readiness update after manual smoke checklist execution and expanded integration quick matrix.
+**Version**: v5  
+**Date**: 2026-04-13  
+**Scope**: Post-stabilization update — datetime fix, normalize test fix, mypy config, pretrained tests, full matrix green.
 
 ---
 
@@ -14,18 +14,18 @@
 - Expanded integration quick matrix re-run and fully green.
 - SQLite compatibility issue discovered during smoke (`to_char`) and fixed with dialect-aware logic.
 
-**Current readiness score**: **93/100** (up from 86/100 in v3)
+**Current readiness score**: **98/100** (up from 93/100 in v4)
 
 ---
 
-## 2) What changed since v3
+## 2) What changed since v4
 
-1. Added integration smoke test:
-   - `apps/backend/tests/test_integration_smoke.py`
-2. Fixed DB-compat bug in traffic aggregation:
-   - `apps/backend/app/crud.py` now uses `strftime` on SQLite and `to_char` on PostgreSQL.
-3. Executed manual smoke checklist and updated all checklist items to PASS.
-4. Updated conflict log with new conflict/fix entry (CF-006).
+1. **datetime.utcnow eliminated** across all 3 branches (models, main.py, tests) — 0 deprecation warnings.
+2. **9 pre-existing test failures fixed** — root cause: `normalize_plate_text()` strips dashes but tests queried with dashes.
+3. **mypy configured and passing** on seeded branch (pyproject.toml, 0 errors on 9 source files).
+4. **19 new pretrained tests added** — 10 persistence + 9 API contract tests.
+5. **All fixes ported to integration branch** — 40/40 tests pass + tsc clean.
+6. **Quick-run scripts created** — `quick-backend.sh`, `quick-dashboard.sh`, `quick-test.sh`.
 
 ---
 
@@ -43,9 +43,10 @@ python -m pytest \
   apps/backend/tests/test_pretrained_contract.py -q
 ```
 
-### Result
-- **12 passed**, **0 failed**, **12 warnings**
-- Warnings: known `datetime.utcnow` deprecation path (non-blocking for merge readiness, recommended cleanup follow-up).
+### Result (v5 — full suite)
+- **40 passed**, **0 failed**, **0 warnings**
+- datetime.utcnow deprecation: **RESOLVED** (was 12 warnings in v4).
+- Normalize plate mismatch: **RESOLVED** (was 9 failures pre-v5).
 
 ---
 
@@ -87,15 +88,16 @@ Rationale:
 4. No failing tests in integration matrix.
 
 ### Post-GO recommendations (non-blocking)
-- Cleanup `datetime.utcnow` deprecation warnings as debt item in next hardening cycle.
+- ~~Cleanup `datetime.utcnow` deprecation warnings~~ **DONE** (c561e64, cc900d7).
 - Run one final visual/manual confirmation pass in browser before production-facing demo.
 
 ---
 
 ## 7) Remaining Risks (non-blocking)
 
-1. Warning noise from deprecated datetime defaults may hide future warning signals.
+1. ~~Warning noise from deprecated datetime defaults~~ **RESOLVED**.
 2. Long-term planning docs can drift if branch docs continue in parallel without periodic consolidation.
+3. Baseline OCR/counting evaluation still at draft v0.1 — no model benchmark yet.
 
 ---
 
@@ -107,3 +109,4 @@ Rationale:
 | v2 | 2026-04-10 | Merge rehearsal complete, conflict resolution, quick matrix pass |
 | v3 | 2026-04-10 | Added manual checklist + pretrained contract test, Conditional Go |
 | v4 | 2026-04-10 | Manual checklist PASS + expanded matrix PASS, final GO |
+| v5 | 2026-04-13 | Stabilization punch-list done: datetime fix, 9 test fix, mypy, pretrained tests, quick-run scripts. 40/40 pass, 0 warnings |
