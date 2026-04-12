@@ -14,9 +14,9 @@
 | A | Fix datetime.utcnow -> aware datetime | Cao | 30-45 phut | DONE (c561e64) |
 | B | Unit tests barrier_rules + normalize | Cao | 30-45 phut | DONE (723196b) — 51/51 pass, fix 9 pre-existing fails |
 | C | Cau hinh mypy/pyright cho backend | Trung binh | 20-30 phut | DONE (edad636) — mypy clean, 0 errors |
-| D | Bo sung tests cho pretrained branch | Cao | 45-60 phut |
-| E | Integration branch — full test matrix | Cao | 60 phut |
-| F | Don dep uncommitted changes + baseline eval | Thap | 15-20 phut |
+| D | Bo sung tests cho pretrained branch | Cao | 45-60 phut | DONE (05b9c33) — 33/33 pass, +19 new tests |
+| E | Integration branch — full test matrix | Cao | 60 phut | DONE (cc900d7) — 40/40 pass + tsc clean |
+| F | Don dep uncommitted changes + baseline eval | Thap | 15-20 phut | ALL DONE |
 
 ---
 
