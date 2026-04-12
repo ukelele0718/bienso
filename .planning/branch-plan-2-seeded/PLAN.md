@@ -58,7 +58,7 @@
 - [x] Bo sung filter + sort UX cho account list
 
 ### 4.4 Test & docs
-- [ ] Unit tests cho normalize + barrier rules
+- [x] Unit tests cho normalize + barrier rules
 - [x] Contract tests cho API responses chinh
 - [x] Cap nhat docs runbook + test plan seeded
 
