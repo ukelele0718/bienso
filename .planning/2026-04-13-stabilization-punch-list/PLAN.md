@@ -9,11 +9,11 @@
 
 ## TONG QUAN 6 HANG MUC
 
-| # | Hang muc | Muc do | Uoc luong |
-|---|----------|--------|-----------|
-| A | Fix datetime.utcnow -> aware datetime | Cao | 30-45 phut |
-| B | Unit tests barrier_rules + normalize | Cao | 30-45 phut |
-| C | Cau hinh mypy/pyright cho backend | Trung binh | 20-30 phut |
+| # | Hang muc | Muc do | Uoc luong | Trang thai |
+|---|----------|--------|-----------|------------|
+| A | Fix datetime.utcnow -> aware datetime | Cao | 30-45 phut | DONE (c561e64) |
+| B | Unit tests barrier_rules + normalize | Cao | 30-45 phut | DONE (723196b) — 51/51 pass, fix 9 pre-existing fails |
+| C | Cau hinh mypy/pyright cho backend | Trung binh | 20-30 phut | DONE (edad636) — mypy clean, 0 errors |
 | D | Bo sung tests cho pretrained branch | Cao | 45-60 phut |
 | E | Integration branch — full test matrix | Cao | 60 phut |
 | F | Don dep uncommitted changes + baseline eval | Thap | 15-20 phut |
@@ -26,28 +26,28 @@
 Python 3.12+ deprecated `utcnow()`. Can chuyen sang `datetime.now(UTC)`.
 
 ### A.1 Backend models (apps/backend/app/models.py)
-- [ ] Line 21: `Camera.created_at` default -> `datetime.now(UTC)`
-- [ ] Line 35: `Vehicle.created_at` default -> `datetime.now(UTC)`
-- [ ] Line 53: `PlateRead.created_at` default -> `datetime.now(UTC)`
-- [ ] Line 69: `Account.created_at` default -> `datetime.now(UTC)`
-- [ ] Line 70: `Account.updated_at` default -> `datetime.now(UTC)`
-- [ ] Line 89: `Transaction.created_at` default -> `datetime.now(UTC)`
-- [ ] Line 106: `PaymentRequest.created_at` default -> `datetime.now(UTC)`
-- [ ] Line 126: `ImportBatch.created_at` default -> `datetime.now(UTC)`
-- [ ] Line 136: `AuditLog.created_at` default -> `datetime.now(UTC)`
+- [x] Line 21: `Camera.created_at` default -> `datetime.now(UTC)`
+- [x] Line 35: `Vehicle.created_at` default -> `datetime.now(UTC)`
+- [x] Line 53: `PlateRead.created_at` default -> `datetime.now(UTC)`
+- [x] Line 69: `Account.created_at` default -> `datetime.now(UTC)`
+- [x] Line 70: `Account.updated_at` default -> `datetime.now(UTC)`
+- [x] Line 89: `Transaction.created_at` default -> `datetime.now(UTC)`
+- [x] Line 106: `PaymentRequest.created_at` default -> `datetime.now(UTC)`
+- [x] Line 126: `ImportBatch.created_at` default -> `datetime.now(UTC)`
+- [x] Line 136: `AuditLog.created_at` default -> `datetime.now(UTC)`
 
 ### A.2 Backend runtime (apps/backend/app/main.py)
-- [ ] Line 341: `/health` endpoint -> `datetime.now(UTC).isoformat()`
+- [x] Line 341: `/health` endpoint -> `datetime.now(UTC).isoformat()`
 
 ### A.3 Test files
-- [ ] `tests/test_barrier_api.py` line 18
-- [ ] `tests/test_balance_rule.py` lines 13, 43
-- [ ] `tests/test_seeded_mode.py` (~21 instances, lines 107-109, 217-218, 243-244, etc.)
+- [x] `tests/test_barrier_api.py` line 18
+- [x] `tests/test_balance_rule.py` lines 13, 43
+- [x] `tests/test_seeded_mode.py` (~21 instances, lines 107-109, 217-218, 243-244, etc.)
 
 ### A.4 Kiem tra sau fix
-- [ ] Chay `pytest` — tat ca tests van pass
-- [ ] Grep lai `datetime.utcnow` — khong con instance nao
-- [ ] Commit rieng: `fix(backend): replace deprecated utcnow with timezone-aware datetime`
+- [x] Chay `pytest` — 26 pass, 9 fail (pre-existing session isolation bug, khong lien quan datetime)
+- [x] Grep lai `datetime.utcnow` — 0 instances
+- [x] Commit: `fix(backend): replace deprecated utcnow with timezone-aware datetime` (c561e64)
 
 ---
 
