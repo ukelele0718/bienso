@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+# mypy: disable-error-code="arg-type"
+# Reason: SQLAlchemy Mapped[str] -> Pydantic Literal[...] narrowing;
+# values are validated at runtime by Pydantic.
+
 from .models import Account, BarrierAction, PlateRead, VehicleEvent
 from .schemas import AccountOut, BarrierActionOut, EventOut
 

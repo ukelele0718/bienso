@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+# mypy: disable-error-code="arg-type,misc"
+# Reason: SQLAlchemy Mapped[str] -> Pydantic Literal[...] + dict -> Pydantic model;
+# validated at runtime by Pydantic.
+
 from datetime import UTC, datetime
 from typing import List
 
