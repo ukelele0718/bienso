@@ -8,13 +8,14 @@ Tests for:
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.crud import normalize_plate_text
 from app.models import Account, Transaction
 from app.services import decide_barrier
 
@@ -106,7 +107,7 @@ def _event_payload(
     """Create a standard event payload for testing."""
     return {
         "camera_id": TEST_CAMERA_ID,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "direction": direction,
         "vehicle_type": vehicle_type,
         "track_id": track_id or f"track-{uuid4().hex[:8]}",
@@ -124,12 +125,13 @@ class TestAccountImportScenarios:
     ) -> None:
         """First-time plate detection creates account with temporary_registered status."""
         plate = "29A-11111"
+        normalized = normalize_plate_text(plate)
 
         res = client.post("/api/v1/events", json=_event_payload(plate))
         assert res.status_code == 200
 
-        # Verify account was created
-        account = db_session.query(Account).filter(Account.plate_text == plate).first()
+        # Query by normalized plate (API strips special chars before storing)
+        account = db_session.query(Account).filter(Account.plate_text == normalized).first()
         assert account is not None
         assert account.registration_status == "temporary_registered"
 
@@ -138,10 +140,11 @@ class TestAccountImportScenarios:
     ) -> None:
         """New accounts receive initial balance of 100,000 VND (minus first charge)."""
         plate = "29A-22222"
+        normalized = normalize_plate_text(plate)
 
         client.post("/api/v1/events", json=_event_payload(plate))
 
-        account = db_session.query(Account).filter(Account.plate_text == plate).first()
+        account = db_session.query(Account).filter(Account.plate_text == normalized).first()
         assert account is not None
         # Initial balance is 100000, minus 2000 charge = 98000
         assert account.balance_vnd == 98_000
@@ -151,10 +154,11 @@ class TestAccountImportScenarios:
     ) -> None:
         """New accounts get an 'init' transaction for the initial balance."""
         plate = "29A-33333"
+        normalized = normalize_plate_text(plate)
 
         client.post("/api/v1/events", json=_event_payload(plate))
 
-        account = db_session.query(Account).filter(Account.plate_text == plate).first()
+        account = db_session.query(Account).filter(Account.plate_text == normalized).first()
         assert account is not None
 
         init_tx = (
@@ -171,6 +175,7 @@ class TestAccountImportScenarios:
     ) -> None:
         """Multiple events for same plate should not create duplicate accounts."""
         plate = "29A-44444"
+        normalized = normalize_plate_text(plate)
 
         # Send multiple events for same plate
         client.post("/api/v1/events", json=_event_payload(plate, track_id="track-1"))
@@ -178,7 +183,7 @@ class TestAccountImportScenarios:
         client.post("/api/v1/events", json=_event_payload(plate, track_id="track-3"))
 
         # Should only have one account
-        accounts = db_session.query(Account).filter(Account.plate_text == plate).all()
+        accounts = db_session.query(Account).filter(Account.plate_text == normalized).all()
         assert len(accounts) == 1
 
     def test_duplicate_plate_only_one_init_transaction(
@@ -186,11 +191,13 @@ class TestAccountImportScenarios:
     ) -> None:
         """Multiple events for same plate should only create one init transaction."""
         plate = "29A-55555"
+        normalized = normalize_plate_text(plate)
 
         client.post("/api/v1/events", json=_event_payload(plate, track_id="track-1"))
         client.post("/api/v1/events", json=_event_payload(plate, track_id="track-2"))
 
-        account = db_session.query(Account).filter(Account.plate_text == plate).first()
+        account = db_session.query(Account).filter(Account.plate_text == normalized).first()
+        assert account is not None
         init_txs = (
             db_session.query(Transaction)
             .filter(Transaction.account_id == account.id, Transaction.type == "init")
@@ -206,7 +213,7 @@ class TestPreRegisteredAccountBehavior:
         self, client: TestClient, db_session: Session
     ) -> None:
         """Pre-registered accounts get barrier open on entry."""
-        plate = "30A-REG01"
+        plate = "30AREG01"  # Already normalized (no special chars)
 
         # Create a pre-registered account
         account = Account(
@@ -214,8 +221,8 @@ class TestPreRegisteredAccountBehavior:
             plate_text=plate,
             balance_vnd=100_000,
             registration_status="registered",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         db_session.add(account)
         db_session.commit()
@@ -232,7 +239,7 @@ class TestPreRegisteredAccountBehavior:
         self, client: TestClient, db_session: Session
     ) -> None:
         """Pre-registered accounts get barrier open on exit (seeded mode rule)."""
-        plate = "30A-REG02"
+        plate = "30AREG02"  # Already normalized (no special chars)
 
         # Create a pre-registered account
         account = Account(
@@ -240,8 +247,8 @@ class TestPreRegisteredAccountBehavior:
             plate_text=plate,
             balance_vnd=100_000,
             registration_status="registered",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         db_session.add(account)
         db_session.commit()
@@ -275,8 +282,8 @@ class TestAccountsListAPI:
                     plate_text=f"29A-PAGE{i}",
                     balance_vnd=100_000,
                     registration_status="registered",
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
+                    updated_at=datetime.now(UTC),
                 )
             )
         db_session.commit()
@@ -304,8 +311,8 @@ class TestAccountsListAPI:
                 plate_text="29A-FILTER1",
                 balance_vnd=100_000,
                 registration_status="registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.add(
@@ -314,8 +321,8 @@ class TestAccountsListAPI:
                 plate_text="29A-FILTER2",
                 balance_vnd=100_000,
                 registration_status="registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.add(
@@ -324,8 +331,8 @@ class TestAccountsListAPI:
                 plate_text="30B-OTHER",
                 balance_vnd=100_000,
                 registration_status="registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.commit()
@@ -347,8 +354,8 @@ class TestAccountsListAPI:
                 plate_text="29A-STAT1",
                 balance_vnd=100_000,
                 registration_status="registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.add(
@@ -357,8 +364,8 @@ class TestAccountsListAPI:
                 plate_text="29A-STAT2",
                 balance_vnd=100_000,
                 registration_status="temporary_registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.commit()
@@ -387,8 +394,8 @@ class TestAccountsSummaryAPI:
                     plate_text=f"29A-SUM-REG{i}",
                     balance_vnd=100_000,
                     registration_status="registered",
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
+                    updated_at=datetime.now(UTC),
                 )
             )
         for i in range(2):
@@ -398,8 +405,8 @@ class TestAccountsSummaryAPI:
                     plate_text=f"29A-SUM-TEMP{i}",
                     balance_vnd=100_000,
                     registration_status="temporary_registered",
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
+                    updated_at=datetime.now(UTC),
                 )
             )
         db_session.commit()
@@ -436,15 +443,15 @@ class TestGetSingleAccountAPI:
         self, client: TestClient, db_session: Session
     ) -> None:
         """Get single account returns full details."""
-        plate = "29A-SINGLE"
+        plate = "29ASINGLE"  # Already normalized (no special chars)
         db_session.add(
             Account(
                 id=str(uuid4()),
                 plate_text=plate,
                 balance_vnd=75_000,
                 registration_status="registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.commit()
@@ -470,7 +477,7 @@ class TestAccountTransactionsAPI:
         self, client: TestClient, db_session: Session
     ) -> None:
         """List transactions returns account transaction history."""
-        plate = "29A-TXHIST"
+        plate = "29ATXHIST"  # Already normalized (no special chars)
 
         # Create account with transactions
         account = Account(
@@ -478,8 +485,8 @@ class TestAccountTransactionsAPI:
             plate_text=plate,
             balance_vnd=95_000,
             registration_status="registered",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         db_session.add(account)
         db_session.flush()
@@ -492,7 +499,7 @@ class TestAccountTransactionsAPI:
                 amount_vnd=100_000,
                 balance_after_vnd=100_000,
                 type="init",
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
             )
         )
         db_session.commit()

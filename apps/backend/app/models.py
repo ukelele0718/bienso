@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text
@@ -18,7 +18,7 @@ class Camera(Base):
     location: Mapped[str | None] = mapped_column(Text, nullable=True)
     stream_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
 
     __table_args__ = (CheckConstraint("gate_type IN ('student','staff')", name="ck_cameras_gate_type"),)
 
@@ -32,7 +32,7 @@ class VehicleEvent(Base):
     direction: Mapped[str] = mapped_column(String, nullable=False)
     vehicle_type: Mapped[str] = mapped_column(String, nullable=False)
     track_id: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
 
     __table_args__ = (
         CheckConstraint("direction IN ('in','out')", name="ck_vehicle_events_direction"),
@@ -50,7 +50,7 @@ class PlateRead(Base):
     snapshot_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     crop_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     ocr_status: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
 
     __table_args__ = (CheckConstraint("ocr_status IN ('success','partial','failed')", name="ck_plate_reads_ocr_status"),)
 
@@ -66,8 +66,8 @@ class Account(Base):
     seed_group: Mapped[str | None] = mapped_column(Text, nullable=True)
     imported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     import_batch_id: Mapped[str | None] = mapped_column(String, ForeignKey("import_batches.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
 
     __table_args__ = (
         CheckConstraint(
@@ -86,7 +86,7 @@ class Transaction(Base):
     amount_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
     balance_after_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
     type: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
 
     __table_args__ = (CheckConstraint("type IN ('init','event_charge','manual_adjust')", name="ck_transactions_type"),)
 
@@ -103,7 +103,7 @@ class BarrierAction(Base):
     needs_verification: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     verified_by: Mapped[str | None] = mapped_column(Text, nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
 
     __table_args__ = (
         CheckConstraint(
@@ -123,7 +123,7 @@ class ImportBatch(Base):
     imported_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     skipped_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     invalid_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
 
 
 class AuditLog(Base):
@@ -133,7 +133,7 @@ class AuditLog(Base):
     user_id: Mapped[str | None] = mapped_column(String, nullable=True)
     action: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
 
 
 class PretrainedJob(Base):
@@ -149,8 +149,8 @@ class PretrainedJob(Base):
     processed_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     result_preview_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
 
     __table_args__ = (
         CheckConstraint("job_type IN ('infer','import')", name="ck_pretrained_jobs_job_type"),
@@ -168,7 +168,7 @@ class PretrainedDetection(Base):
     vehicle_type: Mapped[str | None] = mapped_column(String, nullable=True)
     event_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.now(UTC))
 
     __table_args__ = (
         CheckConstraint("vehicle_type IN ('motorbike','car')", name="ck_pretrained_detections_vehicle_type"),
