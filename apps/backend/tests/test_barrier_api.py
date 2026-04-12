@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
@@ -15,7 +15,7 @@ def _event_payload(
 ) -> dict:
     return {
         "camera_id": TEST_CAMERA_ID,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "direction": direction,
         "vehicle_type": vehicle_type,
         "track_id": track_id,

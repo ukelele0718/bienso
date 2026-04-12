@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from time import perf_counter
 from typing import List
 
@@ -338,4 +338,4 @@ def get_error_sample() -> ErrorOut:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "time": datetime.utcnow().isoformat()}
+    return {"status": "ok", "time": datetime.now(UTC).isoformat()}

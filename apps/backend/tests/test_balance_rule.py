@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
@@ -10,7 +10,7 @@ def test_balance_rule_init_and_charge(client: TestClient) -> None:
 
     payload = {
         "camera_id": "11111111-1111-1111-1111-111111111111",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "direction": "in",
         "vehicle_type": "motorbike",
         "track_id": "track-001",
@@ -40,7 +40,7 @@ def test_balance_can_be_negative(client: TestClient) -> None:
     for i in range(60):
         payload = {
             "camera_id": "11111111-1111-1111-1111-111111111111",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "direction": "in" if i % 2 == 0 else "out",
             "vehicle_type": "motorbike",
             "track_id": f"track-{i}",

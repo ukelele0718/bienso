@@ -8,7 +8,7 @@ Tests for:
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -106,7 +106,7 @@ def _event_payload(
     """Create a standard event payload for testing."""
     return {
         "camera_id": TEST_CAMERA_ID,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "direction": direction,
         "vehicle_type": vehicle_type,
         "track_id": track_id or f"track-{uuid4().hex[:8]}",
@@ -214,8 +214,8 @@ class TestPreRegisteredAccountBehavior:
             plate_text=plate,
             balance_vnd=100_000,
             registration_status="registered",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         db_session.add(account)
         db_session.commit()
@@ -240,8 +240,8 @@ class TestPreRegisteredAccountBehavior:
             plate_text=plate,
             balance_vnd=100_000,
             registration_status="registered",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         db_session.add(account)
         db_session.commit()
@@ -275,8 +275,8 @@ class TestAccountsListAPI:
                     plate_text=f"29A-PAGE{i}",
                     balance_vnd=100_000,
                     registration_status="registered",
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
+                    updated_at=datetime.now(UTC),
                 )
             )
         db_session.commit()
@@ -304,8 +304,8 @@ class TestAccountsListAPI:
                 plate_text="29A-FILTER1",
                 balance_vnd=100_000,
                 registration_status="registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.add(
@@ -314,8 +314,8 @@ class TestAccountsListAPI:
                 plate_text="29A-FILTER2",
                 balance_vnd=100_000,
                 registration_status="registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.add(
@@ -324,8 +324,8 @@ class TestAccountsListAPI:
                 plate_text="30B-OTHER",
                 balance_vnd=100_000,
                 registration_status="registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.commit()
@@ -347,8 +347,8 @@ class TestAccountsListAPI:
                 plate_text="29A-STAT1",
                 balance_vnd=100_000,
                 registration_status="registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.add(
@@ -357,8 +357,8 @@ class TestAccountsListAPI:
                 plate_text="29A-STAT2",
                 balance_vnd=100_000,
                 registration_status="temporary_registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.commit()
@@ -387,8 +387,8 @@ class TestAccountsSummaryAPI:
                     plate_text=f"29A-SUM-REG{i}",
                     balance_vnd=100_000,
                     registration_status="registered",
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
+                    updated_at=datetime.now(UTC),
                 )
             )
         for i in range(2):
@@ -398,8 +398,8 @@ class TestAccountsSummaryAPI:
                     plate_text=f"29A-SUM-TEMP{i}",
                     balance_vnd=100_000,
                     registration_status="temporary_registered",
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
+                    updated_at=datetime.now(UTC),
                 )
             )
         db_session.commit()
@@ -443,8 +443,8 @@ class TestGetSingleAccountAPI:
                 plate_text=plate,
                 balance_vnd=75_000,
                 registration_status="registered",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         db_session.commit()
@@ -478,8 +478,8 @@ class TestAccountTransactionsAPI:
             plate_text=plate,
             balance_vnd=95_000,
             registration_status="registered",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         db_session.add(account)
         db_session.flush()
@@ -492,7 +492,7 @@ class TestAccountTransactionsAPI:
                 amount_vnd=100_000,
                 balance_after_vnd=100_000,
                 type="init",
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
             )
         )
         db_session.commit()
