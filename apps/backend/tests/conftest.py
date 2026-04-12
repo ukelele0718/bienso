@@ -13,7 +13,17 @@ os.environ.setdefault("APP_DATABASE_URL", "sqlite+pysqlite:///./test_backend.db"
 
 from app.db import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Account, AuditLog, BarrierAction, Camera, PlateRead, Transaction, VehicleEvent  # noqa: E402
+from app.models import (  # noqa: E402
+    Account,
+    AuditLog,
+    BarrierAction,
+    Camera,
+    PlateRead,
+    PretrainedDetection,
+    PretrainedJob,
+    Transaction,
+    VehicleEvent,
+)
 
 
 @pytest.fixture(scope="session")
@@ -51,7 +61,17 @@ def db_session(db_engine) -> Generator[Session, None, None]:
 
     cleanup = TestingSessionLocal()
     try:
-        for model in (BarrierAction, Transaction, PlateRead, VehicleEvent, Account, Camera, AuditLog):
+        for model in (
+            PretrainedDetection,
+            PretrainedJob,
+            BarrierAction,
+            Transaction,
+            PlateRead,
+            VehicleEvent,
+            Account,
+            Camera,
+            AuditLog,
+        ):
             cleanup.query(model).delete()
         cleanup.commit()
     finally:

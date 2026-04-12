@@ -1,8 +1,17 @@
 import type {
+  AccountListResponse,
   AccountOut,
+  AccountsSummaryResponse,
   BarrierActionOut,
   EventOut,
+  ImportBatchesSummaryResponse,
+  ImportBatchOut,
   OcrRateOut,
+  PretrainedImportIn,
+  PretrainedInferIn,
+  PretrainedJobOut,
+  PretrainedJobsPageOut,
+  PretrainedJobsSummaryOut,
   RealtimeStatOut,
   TrafficStatOut,
   TransactionOut,
@@ -63,7 +72,89 @@ export async function fetchTransactions(plateText: string): Promise<TransactionO
   return parseJson<TransactionOut[]>(res, 'Failed to fetch transactions');
 }
 
-export async function fetchBarrierActions(plateText: string): Promise<BarrierActionOut[]> {
-  const res = await fetch(`${BASE_URL}/api/v1/barrier-actions?plate=${encodeURIComponent(plateText)}`);
+export async function fetchBarrierActions(plateText?: string): Promise<BarrierActionOut[]> {
+  const query = plateText ? `?plate=${encodeURIComponent(plateText)}` : '';
+  const res = await fetch(`${BASE_URL}/api/v1/barrier-actions${query}`);
   return parseJson<BarrierActionOut[]>(res, 'Failed to fetch barrier actions');
+}
+
+// Seeded mode API functions
+export async function fetchAccounts(params?: {
+  plate?: string;
+  registration_status?: string;
+  page?: number;
+  page_size?: number;
+  sort_by?: 'created_at' | 'balance_vnd' | 'plate_text';
+  sort_order?: 'asc' | 'desc';
+}): Promise<AccountListResponse> {
+  const query = new URLSearchParams();
+  if (params?.plate) query.set('plate', params.plate);
+  if (params?.registration_status) query.set('registration_status', params.registration_status);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.page_size) query.set('page_size', String(params.page_size));
+  if (params?.sort_by) query.set('sort_by', params.sort_by);
+  if (params?.sort_order) query.set('sort_order', params.sort_order);
+
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  const res = await fetch(`${BASE_URL}/api/v1/accounts${suffix}`);
+  return parseJson<AccountListResponse>(res, 'Failed to fetch accounts');
+}
+
+export async function fetchAccountsSummary(): Promise<AccountsSummaryResponse> {
+  const res = await fetch(`${BASE_URL}/api/v1/accounts/summary`);
+  return parseJson<AccountsSummaryResponse>(res, 'Failed to fetch accounts summary');
+}
+
+export async function fetchImportBatches(limit = 20): Promise<ImportBatchOut[]> {
+  const res = await fetch(`${BASE_URL}/api/v1/import-batches?limit=${limit}`);
+  return parseJson<ImportBatchOut[]>(res, 'Failed to fetch import batches');
+}
+
+export async function fetchImportBatchesSummary(): Promise<ImportBatchesSummaryResponse> {
+  const res = await fetch(`${BASE_URL}/api/v1/import-batches/summary`);
+  return parseJson<ImportBatchesSummaryResponse>(res, 'Failed to fetch import batches summary');
+}
+
+export async function verifyBarrier(plate: string, actor: string): Promise<BarrierActionOut> {
+  const query = new URLSearchParams();
+  query.set('plate', plate);
+  query.set('actor', actor);
+  const res = await fetch(`${BASE_URL}/api/v1/barrier-actions/verify?${query.toString()}`, {
+    method: 'POST',
+  });
+  return parseJson<BarrierActionOut>(res, 'Failed to verify barrier action');
+}
+
+export async function createPretrainedInferJob(payload: PretrainedInferIn): Promise<PretrainedJobOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/infer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<PretrainedJobOut>(res, 'Failed to create pretrained infer job');
+}
+
+export async function createPretrainedImportJob(payload: PretrainedImportIn): Promise<PretrainedJobOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<PretrainedJobOut>(res, 'Failed to create pretrained import job');
+}
+
+export async function fetchPretrainedJobs(page = 1, pageSize = 20): Promise<PretrainedJobsPageOut> {
+  const query = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/jobs?${query.toString()}`);
+  return parseJson<PretrainedJobsPageOut>(res, 'Failed to fetch pretrained jobs');
+}
+
+export async function fetchPretrainedJob(jobId: string): Promise<PretrainedJobOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/jobs/${encodeURIComponent(jobId)}`);
+  return parseJson<PretrainedJobOut>(res, 'Failed to fetch pretrained job detail');
+}
+
+export async function fetchPretrainedJobsSummary(): Promise<PretrainedJobsSummaryOut> {
+  const res = await fetch(`${BASE_URL}/api/v1/pretrained/jobs/summary`);
+  return parseJson<PretrainedJobsSummaryOut>(res, 'Failed to fetch pretrained jobs summary');
 }

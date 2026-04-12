@@ -41,35 +41,35 @@
 ## 4) Work Breakdown (code-heavy)
 
 ### 4.1 Backend refactor
-- [ ] Tach module `barrier_rules.py` / `account_state.py`
-- [ ] Tach response mappers cho Event/Barrier/Account
-- [ ] Chuan hoa naming va typed aliases
-- [ ] Giam duplicate logic trong CRUD
+- [x] Tach module `barrier_rules.py` / `account_state.py`
+- [x] Tach response mappers cho Event/Barrier/Account
+- [x] Chuan hoa naming va typed aliases
+- [x] Giam duplicate logic trong CRUD
 
 ### 4.2 API contracts
-- [ ] Them error schema thong nhat (`code`, `message`, `details`)
-- [ ] Dong bo Pydantic models voi frontend types
-- [ ] Add examples cho endpoint chinh
+- [x] Them error schema thong nhat (`code`, `message`, `details`)
+- [x] Dong bo Pydantic models voi frontend types
+- [x] Add examples cho endpoint chinh
 
 ### 4.3 Dashboard polishing
-- [ ] Tach component cho Import Summary section
-- [ ] Tach component cho Verify Queue section
-- [ ] Bo sung empty/loading/error states
-- [ ] Bo sung filter + sort UX cho account list
+- [x] Tach component cho Import Summary section
+- [x] Tach component cho Verify Queue section
+- [x] Bo sung empty/loading/error states
+- [x] Bo sung filter + sort UX cho account list
 
 ### 4.4 Test & docs
-- [ ] Unit tests cho normalize + barrier rules
-- [ ] Contract tests cho API responses chinh
-- [ ] Cap nhat docs runbook + test plan seeded
+- [x] Unit tests cho normalize + barrier rules
+- [x] Contract tests cho API responses chinh
+- [x] Cap nhat docs runbook + test plan seeded
 
 ---
 
 ## 5) Tieu chi hoan thanh
 
-- [ ] Chinh sua 20+ file (backend + dashboard + test + docs).
-- [ ] Lint/typecheck pass.
-- [ ] Contract backend/frontend khong lech.
-- [ ] Seeded flow van pass sau refactor.
+- [x] Chinh sua 20+ file (backend + dashboard + test + docs).
+- [x] Lint/typecheck pass.
+- [x] Contract backend/frontend khong lech.
+- [x] Seeded flow van pass sau refactor.
 
 ---
 

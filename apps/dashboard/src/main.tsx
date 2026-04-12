@@ -1,16 +1,32 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import {
   fetchAccount,
+  fetchAccounts,
+  fetchAccountsSummary,
   fetchBarrierActions,
   fetchEvents,
+  fetchImportBatches,
+  fetchImportBatchesSummary,
   fetchOcrRate,
   fetchRealtimeStats,
   fetchTraffic,
   fetchTransactions,
+  verifyBarrier,
 } from './api';
-import type { BarrierActionOut, EventOut, RealtimeStatOut, TrafficStatOut } from './api-types';
+import type {
+  AccountListItem,
+  AccountsSummaryResponse,
+  BarrierActionOut,
+  EventOut,
+  ImportBatchesSummaryResponse,
+  ImportBatchOut,
+  RealtimeStatOut,
+  TrafficStatOut,
+} from './api-types';
+import { ImportSummarySection } from './components/ImportSummarySection';
+import { VerifyQueueSection } from './components/VerifyQueueSection';
 
 const cardStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -18,6 +34,66 @@ const cardStyle: React.CSSProperties = {
   padding: 16,
   boxShadow: '0 10px 24px rgba(15, 23, 42, 0.08)',
 };
+
+const tableHeaderStyle: React.CSSProperties = {
+  textAlign: 'left',
+  color: '#475569',
+  paddingBottom: 8,
+};
+
+const tableCellStyle: React.CSSProperties = {
+  padding: '6px 0',
+};
+
+const inputStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 8,
+  border: '1px solid #cbd5f5',
+};
+
+const buttonStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 8,
+  border: '1px solid #cbd5f5',
+  cursor: 'pointer',
+  background: '#fff',
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  background: '#3b82f6',
+  color: '#fff',
+  border: '1px solid #3b82f6',
+};
+
+const paginationButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  padding: '6px 10px',
+  fontSize: '12px',
+};
+
+function getStatusBadge(status?: string | null): React.JSX.Element {
+  const colors: Record<string, { bg: string; text: string }> = {
+    registered: { bg: '#dcfce7', text: '#166534' },
+    temporary_registered: { bg: '#fef3c7', text: '#92400e' },
+    unknown: { bg: '#e2e8f0', text: '#475569' },
+  };
+  const { bg, text } = colors[status ?? 'unknown'] ?? colors.unknown;
+  return (
+    <span
+      style={{
+        background: bg,
+        color: text,
+        padding: '2px 8px',
+        borderRadius: 4,
+        fontSize: '12px',
+        fontWeight: 500,
+      }}
+    >
+      {status ?? 'unknown'}
+    </span>
+  );
+}
 
 function App(): React.JSX.Element {
   const [realtime, setRealtime] = useState<RealtimeStatOut | null>(null);
@@ -34,9 +110,33 @@ function App(): React.JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Seeded mode state
+  const [accountsSummary, setAccountsSummary] = useState<AccountsSummaryResponse | null>(null);
+  const [accountsList, setAccountsList] = useState<AccountListItem[]>([]);
+  const [accountsTotal, setAccountsTotal] = useState(0);
+  const [accountsPage, setAccountsPage] = useState(1);
+  const [accountsPageSize] = useState(10);
+  const [accountsPlateFilter, setAccountsPlateFilter] = useState('');
+  const [accountsStatusFilter, setAccountsStatusFilter] = useState('');
+  const [accountsSortBy, setAccountsSortBy] = useState<'created_at' | 'balance_vnd' | 'plate_text'>('created_at');
+  const [accountsSortOrder, setAccountsSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [verifyQueue, setVerifyQueue] = useState<BarrierActionOut[]>([]);
+  const [verifyingPlate, setVerifyingPlate] = useState<string | null>(null);
+  const [importBatches, setImportBatches] = useState<ImportBatchOut[]>([]);
+  const [importSummary, setImportSummary] = useState<ImportBatchesSummaryResponse | null>(null);
+
   useEffect(() => {
     void loadRealtime();
+    void loadAccountsSummary();
+    void loadAccountsList();
+    void loadVerifyQueue();
+    void loadImportSummary();
   }, []);
+
+  // Reload accounts list when filters or page changes
+  useEffect(() => {
+    void loadAccountsList();
+  }, [accountsPage, accountsStatusFilter, accountsSortBy, accountsSortOrder]);
 
   async function loadRealtime(): Promise<void> {
     try {
@@ -57,6 +157,72 @@ function App(): React.JSX.Element {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadAccountsSummary(): Promise<void> {
+    try {
+      const summary = await fetchAccountsSummary();
+      setAccountsSummary(summary);
+    } catch (err) {
+      console.error('Failed to load accounts summary:', err);
+    }
+  }
+
+  const loadAccountsList = useCallback(async (): Promise<void> => {
+    try {
+      const response = await fetchAccounts({
+        plate: accountsPlateFilter || undefined,
+        registration_status: accountsStatusFilter || undefined,
+        page: accountsPage,
+        page_size: accountsPageSize,
+        sort_by: accountsSortBy,
+        sort_order: accountsSortOrder,
+      });
+      setAccountsList(response.items);
+      setAccountsTotal(response.total);
+    } catch (err) {
+      console.error('Failed to load accounts list:', err);
+    }
+  }, [accountsPlateFilter, accountsStatusFilter, accountsPage, accountsPageSize, accountsSortBy, accountsSortOrder]);
+
+  async function loadVerifyQueue(): Promise<void> {
+    try {
+      const actions = await fetchBarrierActions();
+      const pending = actions.filter((a) => a.needs_verification && !a.verified_by);
+      setVerifyQueue(pending);
+    } catch (err) {
+      console.error('Failed to load verify queue:', err);
+    }
+  }
+
+  async function loadImportSummary(): Promise<void> {
+    try {
+      const [summary, batches] = await Promise.all([
+        fetchImportBatchesSummary(),
+        fetchImportBatches(10),
+      ]);
+      setImportSummary(summary);
+      setImportBatches(batches);
+    } catch (err) {
+      console.error('Failed to load import summary:', err);
+    }
+  }
+
+  async function handleVerify(plate: string): Promise<void> {
+    try {
+      setVerifyingPlate(plate);
+      await verifyBarrier(plate, 'dashboard_operator');
+      await loadVerifyQueue();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to verify');
+    } finally {
+      setVerifyingPlate(null);
+    }
+  }
+
+  function handleAccountsSearch(): void {
+    setAccountsPage(1);
+    void loadAccountsList();
   }
 
   async function handleSearch(): Promise<void> {
@@ -89,6 +255,8 @@ function App(): React.JSX.Element {
     return traffic.map((bucket) => `${bucket.bucket}: ${bucket.total_in}/${bucket.total_out}`).join(' • ');
   }, [traffic]);
 
+  const totalPages = Math.ceil(accountsTotal / accountsPageSize);
+
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh', padding: 24, fontFamily: 'Inter, sans-serif' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -109,7 +277,7 @@ function App(): React.JSX.Element {
         <div style={{ ...cardStyle, background: '#fee2e2', color: '#991b1b', marginBottom: 16 }}>{error}</div>
       ) : null}
 
-      <section style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+      <section style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <div style={cardStyle}>
           <p style={{ margin: 0, color: '#64748b' }}>Total In</p>
           <h2 style={{ margin: '8px 0' }}>{realtime?.total_in ?? '--'}</h2>
@@ -122,6 +290,22 @@ function App(): React.JSX.Element {
           <p style={{ margin: 0, color: '#64748b' }}>OCR Success</p>
           <h2 style={{ margin: '8px 0' }}>{ocrRate !== null ? `${ocrRate.toFixed(1)}%` : '--'}</h2>
         </div>
+        <div style={{ ...cardStyle, background: '#eff6ff' }}>
+          <p style={{ margin: 0, color: '#3b82f6' }}>Total Accounts</p>
+          <h2 style={{ margin: '8px 0', color: '#1d4ed8' }}>{accountsSummary?.total_accounts ?? '--'}</h2>
+        </div>
+        <div style={{ ...cardStyle, background: '#dcfce7' }}>
+          <p style={{ margin: 0, color: '#166534' }}>Registered</p>
+          <h2 style={{ margin: '8px 0', color: '#166534' }}>{accountsSummary?.registered_accounts ?? '--'}</h2>
+        </div>
+        <div style={{ ...cardStyle, background: '#fef3c7' }}>
+          <p style={{ margin: 0, color: '#92400e' }}>Temporary</p>
+          <h2 style={{ margin: '8px 0', color: '#92400e' }}>{accountsSummary?.temporary_registered_accounts ?? '--'}</h2>
+        </div>
+      </section>
+
+      {/* Traffic Summary Row */}
+      <section style={{ marginTop: 16 }}>
         <div style={cardStyle}>
           <p style={{ margin: 0, color: '#64748b' }}>Traffic summary</p>
           <p style={{ margin: '8px 0', fontWeight: 600 }}>{trafficSummary || '--'}</p>
@@ -245,6 +429,152 @@ function App(): React.JSX.Element {
           )}
         </div>
       </section>
+
+      {/* Account List Section */}
+      <section style={{ marginTop: 24 }}>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ margin: 0 }}>Account List</h3>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="text"
+                value={accountsPlateFilter}
+                onChange={(e) => setAccountsPlateFilter(e.target.value)}
+                placeholder="Search by plate..."
+                style={{ ...inputStyle, minWidth: 180 }}
+                onKeyDown={(e) => e.key === 'Enter' && handleAccountsSearch()}
+              />
+              <select
+                value={accountsStatusFilter}
+                onChange={(e) => {
+                  setAccountsStatusFilter(e.target.value);
+                  setAccountsPage(1);
+                }}
+                style={{ ...inputStyle, minWidth: 160 }}
+                aria-label="Filter by registration status"
+              >
+                <option value="">All Status</option>
+                <option value="registered">Registered</option>
+                <option value="temporary_registered">Temporary</option>
+              </select>
+              <select
+                value={accountsSortBy}
+                onChange={(e) => {
+                  setAccountsSortBy(e.target.value as 'created_at' | 'balance_vnd' | 'plate_text');
+                  setAccountsPage(1);
+                }}
+                style={{ ...inputStyle, minWidth: 160 }}
+                aria-label="Sort by"
+              >
+                <option value="created_at">Sort: Created At</option>
+                <option value="balance_vnd">Sort: Balance</option>
+                <option value="plate_text">Sort: Plate</option>
+              </select>
+              <select
+                value={accountsSortOrder}
+                onChange={(e) => {
+                  setAccountsSortOrder(e.target.value as 'asc' | 'desc');
+                  setAccountsPage(1);
+                }}
+                style={{ ...inputStyle, minWidth: 120 }}
+                aria-label="Sort order"
+              >
+                <option value="desc">Desc</option>
+                <option value="asc">Asc</option>
+              </select>
+              <button type="button" onClick={handleAccountsSearch} style={buttonStyle}>
+                Search
+              </button>
+            </div>
+          </div>
+
+          {accountsList.length === 0 ? (
+            <p style={{ color: '#94a3b8' }}>No accounts found</p>
+          ) : (
+            <>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={tableHeaderStyle}>Plate</th>
+                    <th style={tableHeaderStyle}>Balance (VND)</th>
+                    <th style={tableHeaderStyle}>Registration Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accountsList.map((account) => (
+                    <tr key={account.plate_text} style={{ borderTop: '1px solid #e2e8f0' }}>
+                      <td style={{ ...tableCellStyle, fontWeight: 600, fontFamily: 'monospace' }}>
+                        {account.plate_text}
+                      </td>
+                      <td style={tableCellStyle}>
+                        {account.balance_vnd.toLocaleString()}
+                      </td>
+                      <td style={tableCellStyle}>
+                        {getStatusBadge(account.registration_status)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Pagination */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                <span style={{ color: '#64748b', fontSize: '14px' }}>
+                  Showing {((accountsPage - 1) * accountsPageSize) + 1} - {Math.min(accountsPage * accountsPageSize, accountsTotal)} of {accountsTotal}
+                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setAccountsPage(Math.max(1, accountsPage - 1))}
+                    disabled={accountsPage <= 1}
+                    style={{
+                      ...paginationButtonStyle,
+                      opacity: accountsPage <= 1 ? 0.5 : 1,
+                      cursor: accountsPage <= 1 ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ padding: '6px 12px', fontSize: '14px' }}>
+                    Page {accountsPage} of {totalPages || 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAccountsPage(Math.min(totalPages, accountsPage + 1))}
+                    disabled={accountsPage >= totalPages}
+                    style={{
+                      ...paginationButtonStyle,
+                      opacity: accountsPage >= totalPages ? 0.5 : 1,
+                      cursor: accountsPage >= totalPages ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      <ImportSummarySection
+        summary={importSummary}
+        batches={importBatches}
+        onRefresh={() => {
+          void loadImportSummary();
+        }}
+      />
+
+      <VerifyQueueSection
+        queue={verifyQueue}
+        verifyingPlate={verifyingPlate}
+        onRefresh={() => {
+          void loadVerifyQueue();
+        }}
+        onVerify={(plate) => {
+          void handleVerify(plate);
+        }}
+      />
     </div>
   );
 }

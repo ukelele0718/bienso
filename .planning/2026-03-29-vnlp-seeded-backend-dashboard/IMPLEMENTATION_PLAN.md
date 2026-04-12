@@ -1,432 +1,324 @@
 # IMPLEMENTATION PLAN
-## Luong gia lap "da co danh sach bien so" tu VNLP de day nhanh backend va dashboard
+## Ke hoach trien khai rieng cho luong VNLP seeded backend dashboard
 
-**Version**: 1.0  
+**Version**: 1.1  
 **Ngay cap nhat**: 2026-03-29  
-**Pham vi**: bo qua bai toan OCR/train trong giai doan nay, coi nhu da co danh sach bien so va chi tap trung vao import DB + backend + dashboard  
+**Pham vi**: bo qua OCR/train trong giai doan nay, coi nhu da co `plate_text` va tap trung vao import database, backend nghiep vu, dashboard, va demo luong thanh chan  
 
 ---
 
-## 0) Can cu xuat phat
-Tu 2 file:
+## 0) Muc tieu trien khai
+Trien khai nhanh mot prototype theo luong bat buoc:
+
+`VNLP filename list` -> `seed file bien so` -> `import vao DB` -> `event gia lap co plate_text` -> `backend nghiep vu` -> `dashboard van hanh`
+
+He thong can bao phu duoc:
+- import danh sach bien so da normalize vao `accounts`
+- khoi tao so du mac dinh `100000 VND`
+- tru `2000 VND` cho moi event in/out
+- cho phep so du am
+- mo phong luong thanh chan:
+  - bien so da dang ky vao: mo
+  - bien so da dang ky ra: mo
+  - bien so la vao: tao `temporary_registered` va mo
+  - bien so tam ra: hold va yeu cau verify
+
+---
+
+## 0.1) Can cu du lieu dau vao
+Tu:
 - `G:\TTMT\datn\data\external\vnlp\VNLP_detection\detection\list_two_rows_label_xe_may.txt`
 - `G:\TTMT\datn\data\external\vnlp\VNLP_detection\detection\VNLP_readme`
 
 Co the suy ra:
-- filename trong VNLP da chua chuoi bien so
-- filename cung chua toa do bbox
-- danh sach `list_two_rows_label_xe_may.txt` co the dung de rut ra bien so ma khong can OCR
+- filename da chua `plate_text`
+- filename da chua thong tin bbox
+- khong can OCR de rut bien so cho phase nay
 
-Quan sat nhanh tren file list nay:
+Thong ke hien tai tren file list:
 - tong so dong: `5593`
-- so bien so parse duoc: `5593`
-- so bien so unique sau khi upper-case: `3227`
+- tong so plate parse duoc: `5593`
+- tong so plate unique sau normalize upper-case: `3227`
 
 Suy ra:
-- chi rieng file nay da du de tao mot tap `registered plates` gia lap
-- co the coi day la du lieu seed ban dau de phat trien backend/dashboard
+- file nay du de tao mot seed batch `registered plates`
+- luong seeded mode co the duoc xay song song voi nhom AI/train
 
 ---
 
-## 1) Muc tieu cua plan nay
-Muc tieu la khoa pham vi theo huong:
-
-`VNLP filename list` -> `seed file bien so` -> `import vao database` -> `backend APIs` -> `dashboard van hanh`
-
-Khong lam trong plan nay:
-- OCR that
-- plate detector that
-- vehicle detector that
-- train model that
-- dong bo runtime vision that
-
-Nghia la trong giai doan nay, he thong se hoat dong nhu mot ban mo phong:
-- "nhan dien bien so" da co ket qua dau vao
-- backend xu ly nghiep vu tu danh sach bien so nay
-- dashboard co the quan sat, tra cuu, verify, va demo luong nghiep vu
+## 1) Scope lock checklist
+- [x] Dau vao cua he thong trong phase nay la `plate_text` da co san
+- [x] Chi tap trung vao backend + dashboard + import + event gia lap
+- [x] Khong phu thuoc OCR that
+- [x] Khong phu thuoc detector that
+- [x] Khong phu thuoc runtime camera that
+- [x] Chot contract `registered_plates_seed.csv`
+- [x] Chot rule normalize bien so duy nhat
+- [x] Chot rule `registered + out -> open`
+- [x] Chot policy import lai seed batch
 
 ---
 
-## 2) Gia dinh khoa cung
+## 2) Work Breakdown Structure (WBS)
 
-### Gia dinh 1 - Danh sach bien so da san sang
-Ta coi nhu da co mot file seed, vi du:
-- `registered_plates_seed.csv`
+## Phase 1 - Finalize seeded-mode PRD + data contract
+### Deliverables
+- `PRD.md` cho luong seeded mode
+- contract `registered_plates_seed.csv`
+- rule normalize va dedupe duoc chot
 
-No chua toi thieu:
-- `plate_text`
+### Checklist
+- [x] Chot pham vi "khong AI that"
+- [x] Chot nguon seed tu VNLP filename list
+- [x] Chot cot bat buoc: `plate_text`, `source`, `seed_group`
+- [x] Chot cot nen co: `vehicle_type`, `note`
+- [x] Chot rule upper-case / bo separator / bo space
+- [x] Chot policy duplicate plate trong cung seed
 
-Nen co them:
-- `source`
-- `seed_group`
-- `vehicle_type`
-- `note`
-
-### Gia dinh 2 - Bien so seed la bien so "da dang ky"
-Tat ca bien so import tu file seed se vao DB voi:
-- `registration_status = registered`
-- `balance_vnd = 100000`
-
-### Gia dinh 3 - Chi can demo luong nghiep vu
-Muc tieu la:
-- tim kiem bien so
-- xem so du
-- xem lich su giao dich
-- xem event in/out
-- xem barrier action
-- verify cac xe bi hold
-
----
-
-## 3) Dinh nghia artifact seed can chot
-
-### 3.1 Contract toi thieu
-De backend import de dang, chot mot contract CSV rat don gian:
-
-| Cot | Bat buoc | Vi du | Ghi chu |
-| --- | --- | --- | --- |
-| `plate_text` | co | `29A12345` | bien so da normalize |
-| `source` | co | `vnlp_two_rows_xe_may` | nguon seed |
-| `seed_group` | co | `2026_03_29_v1` | batch import |
-| `vehicle_type` | nen co | `motorbike` | phuc vu UI/filter |
-| `note` | tuy chon | `seed from VNLP filename` | provenance |
-
-### 3.2 Rule normalize bien so
-Truoc khi import, chot 1 rule normalize duy nhat:
-- upper-case
-- bo khoang trang
-- bo ky tu phan cach neu co
-- giu lai chu va so lien mach
-
-Vi du:
-- `29h119396` -> `29H119396`
-- `29-AA-30124` -> `29AA30124`
-
-### 3.3 Rule dedupe
-Neu cung 1 bien so xuat hien nhieu lan trong seed:
-- chi import `1` account
-- luu lai so lan xuat hien o file bao cao neu can
-
----
-
-## 4) Danh gia code hien tai
-
-### Hien da co
-Backend hien da co cac bang va API can ban:
-- `accounts`
-- `transactions`
-- `vehicle_events`
-- `plate_reads`
-- `barrier_actions`
-
-Co san cac API:
-- tao event
-- lay account theo bien so
-- lay transactions
-- lay barrier actions theo bien so
-- verify barrier hold
-- realtime stats
-
-### Hien chua co hoac chua du
-- chua co luong import bulk plates
-- chua co API list/search accounts
-- chua co API import preview / import summary
-- chua co dashboard man hinh quan ly danh sach bien so seed
-- chua co dashboard man hinh transaction/account list day du
-
-### Diem nghiep vu can sua som
-Logic barrier hien tai dang co lo hong quan trong:
-- `registered + in` -> `open`
-- `temporary_registered + in` -> `open`
-- `temporary_registered + out` -> `hold`
-- nhung `registered + out` hien se roi vao `default_hold`
-
-Neu muon dung seed plates de demo nghiep vu hop ly, can quyet dinh som:
-- xe `registered` khi `out` se `open` hay `hold`
-
-Khuyen nghi:
-- dat `registered + out -> open`
-
-Neu khong sua diem nay, luong demo voi bien so seed se bi vo.
-
----
-
-## 5) Luong kien truc de xuat
-
-### Phase A - Seed extraction artifact
-Day la phase "ngoai he thong train":
-- doc file list VNLP
-- parse plate tu filename
-- normalize
-- dedupe
-- xuat ra `registered_plates_seed.csv`
-
-Output cua phase nay:
-- `registered_plates_seed.csv`
-- `registered_plates_seed_summary.json`
-
-### Phase B - Import vao DB
-He thong import doc seed CSV va:
-- upsert vao `accounts`
-- tao `init transaction` cho account moi
-- bo qua account da ton tai, hoac update theo policy
-
-Output:
-- `N imported`
-- `N skipped duplicate`
-- `N invalid`
-
-### Phase C - Backend nghiep vu
-Sau khi co seed accounts:
-- event moi co `plate_text` trung seed se di theo nhanh `registered`
-- event moi co `plate_text` khong co trong seed se tao `temporary_registered`
-- barrier actions va transactions se sinh theo rule nghiep vu
-
-### Phase D - Dashboard
-Dashboard se co cac man hinh:
-- danh sach tai khoan/bien so
-- chi tiet tai khoan
-- lich su giao dich
-- lich su event
-- hang doi verify barrier
-- tong quan imported plates / registered / temporary
-
----
-
-## 6) Work Breakdown Structure
-
-## Phase 1 - Chot contract seed va fake data boundary
-**Muc tieu**: ngan du an roi nguoc tro lai bai toan OCR/train
-
-Cong viec:
-- chot rang dau vao he thong la `plate_text` da co san
-- chot format `registered_plates_seed.csv`
-- chot rule normalize bien so
-- chot policy dedupe
-- chot policy account da ton tai thi xu ly the nao
-
-Dau ra:
-- 1 tai lieu contract seed
-- 1 file mau seed
-
-Thoi gian uoc tinh:
+### Thoi gian uoc tinh
 - `0.5 ngay`
 
 ---
 
-## Phase 2 - Thiet ke import path vao database
-**Muc tieu**: co duong nhap du lieu bien so vao DB an toan, lap lai duoc
+## Phase 2 - Seed extraction artifact
+### Deliverables
+- `registered_plates_seed.csv`
+- `registered_plates_seed_summary.json`
+- report duplicate / invalid / normalized
 
-Cong viec:
-- quyet dinh import bang script hay API admin
-- uu tien giai doan 1: script local/CLI
-- them idempotency:
-  - import lai khong tao duplicate account
-- them summary report:
-  - imported
-  - skipped
-  - invalid
+### Checklist
+- [x] Doc file list VNLP
+- [x] Parse `plate_text` tu filename
+- [x] Normalize bien so
+- [x] Dedupe theo `plate_text`
+- [x] Gan `source=vnlp_two_rows_xe_may`
+- [x] Gan `seed_group`
+- [x] Xuat file CSV seed
+- [x] Xuat file summary de audit
 
-Khuyen nghi MVP:
-- lam `seed_accounts.py` chay local
-- chua can upload file qua dashboard
+### Thoi gian uoc tinh
+- `0.5 ngay`
 
-Dau ra:
-- script import
-- log ket qua import
-- du lieu `accounts` va `transactions` duoc seed
+---
 
-Thoi gian uoc tinh:
+## Phase 3 - Import path vao database
+### Deliverables
+- script import local/CLI
+- import summary ro rang
+- du lieu `accounts` + `transactions` duoc seed
+
+### Checklist
+- [x] Tao script import local
+- [x] Input: `registered_plates_seed.csv`
+- [x] Upsert theo `plate_text`
+- [x] Account moi:
+  - [x] `registration_status=registered`
+  - [x] `balance_vnd=100000`
+  - [x] sinh `Transaction(type='init')`
+- [x] Account da ton tai:
+  - [x] skip hoac update theo policy da chot
+- [x] In summary:
+  - [x] imported
+  - [x] skipped
+  - [x] invalid
+- [x] Dam bao import idempotent o muc MVP
+
+### Thoi gian uoc tinh
 - `0.5-1 ngay`
 
 ---
 
-## Phase 3 - Sua nghiep vu backend de ho tro luong seed
-**Muc tieu**: event flow phai dung khi diem bat dau la account da ton tai
+## Phase 4 - Backend business rule fix for seeded mode
+### Deliverables
+- rule nghiep vu khop seeded mode
+- test case cho 4 nhanh chinh
 
-Cong viec:
-- bo sung rule cho `registered + out`
-- review logic `unknown` / `temporary_registered`
-- dam bao event voi bien so seed khong bi tao lai account sai
-- dam bao transaction init chi tao 1 lan cho account moi
-- dam bao verify hold van chay duoc cho xe tam
+### Checklist
+- [x] Bo sung rule `registered + out -> open`
+- [x] Review lai y nghia `unknown`
+- [x] Dam bao seed plate khong bi tao lai thanh `temporary_registered`
+- [x] Dam bao unknown plate `in` van tao `temporary_registered`
+- [x] Dam bao `temporary_registered + out -> hold`
+- [x] Dam bao verify hold van mo duoc barrier
 
-Can test ro:
-- bien so trong seed, `in`
-- bien so trong seed, `out`
-- bien so khong trong seed, `in`
-- bien so khong trong seed, `out`
+### Test case bat buoc
+- [x] registered plate + in
+- [x] registered plate + out
+- [x] unknown plate + in
+- [x] temporary_registered plate + out
 
-Dau ra:
-- backend business rule on dinh hon
-- test case moi cho cac nhanh tren
-
-Thoi gian uoc tinh:
+### Thoi gian uoc tinh
 - `1 ngay`
 
 ---
 
-## Phase 4 - Mo rong backend API cho dashboard van hanh
-**Muc tieu**: dashboard co du du lieu de xai duoc that
+## Phase 5 - Backend API expansion
+### Deliverables
+- API cho dashboard van hanh duoc
+- API list/search/summary account
 
-API can uu tien them:
-- `GET /api/v1/accounts`
-  - tim kiem theo plate
-  - filter theo `registration_status`
-  - pagination
-- `GET /api/v1/accounts/summary`
-  - tong `registered`
-  - tong `temporary_registered`
-  - tong tai khoan
-- `POST /api/v1/accounts/import-preview` hoac script-only summary
-- `POST /api/v1/accounts/{plate}/mark-registered`
-- `POST /api/v1/accounts/{plate}/adjust-balance`
+### Checklist
+- [x] `GET /api/v1/accounts`
+  - [x] search theo plate
+  - [x] filter theo `registration_status`
+  - [x] pagination
+- [x] `GET /api/v1/accounts/summary`
+- [x] `GET /api/v1/accounts/{plate}`
+- [x] `GET /api/v1/accounts/{plate}/transactions`
+- [x] `GET /api/v1/barrier-actions?plate=...`
+- [x] `POST /api/v1/barrier-actions/verify`
+- [x] Can nhac `POST /api/v1/accounts/{plate}/mark-registered`
+- [x] Can nhac `POST /api/v1/accounts/{plate}/adjust-balance`
 
-Neu muon giu MVP gon:
-- bat buoc nhat la `GET /api/v1/accounts`
-- sau do moi them `summary`
-
-Dau ra:
-- dashboard co du endpoint de hien thi va thao tac
-
-Thoi gian uoc tinh:
+### Thoi gian uoc tinh
 - `1-1.5 ngay`
 
 ---
 
-## Phase 5 - Dashboard cho luong seed plates
-**Muc tieu**: demo duoc he thong quan ly bien so ma khong can AI
+## Phase 6 - Dashboard seeded mode
+### Deliverables
+- dashboard co the demo duoc ma khong can AI
+- operator flow ro rang
 
-UI can co:
-- trang danh sach bien so da import
-- o tim kiem bien so
-- filter `registered / temporary_registered`
-- trang chi tiet account:
-  - so du
-  - registration_status
-  - lich su giao dich
-  - barrier action lien quan
-- trang event history
-- trang verify hold queue
+### Checklist
+- [x] danh sach account / bien so
+- [x] o search bien so
+- [x] filter `registered / temporary_registered`
+- [x] trang chi tiet account
+- [x] hien so du hien tai
+- [x] hien lich su giao dich
+- [x] hien lich su event
+- [x] hien barrier action lien quan
+- [x] verify queue cho barrier hold
+- [x] tong quan so luong:
+  - [x] total accounts
+  - [x] registered
+  - [x] temporary_registered
+  - [x] event in/out
 
-Widget tong quan nen co:
-- tong so bien so da seed
-- tong so tai khoan registered
-- tong so tai khoan temporary
-- tong so event in/out
-
-Dau ra:
-- operator co the demo duoc luong quan tri
-
-Thoi gian uoc tinh:
+### Thoi gian uoc tinh
 - `1-2 ngay`
 
 ---
 
-## Phase 6 - Demo data va end-to-end mo phong
-**Muc tieu**: co kich ban demo khong phu thuoc model that
+## Phase 7 - Simulated event flow and QA
+### Deliverables
+- bo event payload gia lap
+- end-to-end demo seeded mode
+- checklist nghiem thu pass
 
-Can chuan bi:
-- 1 tap plates da seed
-- 1 tap payload event gia lap:
-  - bien so da seed vao cong
-  - bien so da seed ra cong
-  - bien so la vao cong
-  - bien so tam ra cong
+### Checklist
+- [x] tao payload event gia lap cho registered plate in
+- [x] tao payload event gia lap cho registered plate out
+- [x] tao payload event gia lap cho unknown plate in
+- [x] tao payload event gia lap cho temporary plate out
+- [x] verify balance thay doi dung
+- [x] verify barrier action dung
+- [x] verify dashboard hien thi dung
+- [x] verify search + history + verify queue
 
-Can quan sat:
-- transaction co sinh dung khong
-- barrier action co dung rule khong
-- dashboard co hien dung khong
-- verify hold co cap nhat duoc khong
-
-Dau ra:
-- kich ban demo hoan chinh khong can OCR
-
-Thoi gian uoc tinh:
+### Thoi gian uoc tinh
 - `0.5-1 ngay`
 
 ---
 
-## 7) Lo trinh uu tien rat thuc dung
+## Phase 8 - Optional provenance and import audit
+### Deliverables
+- import metadata ro rang hon
+- co kha nang audit batch import
 
-### MVP nhanh nhat
-Neu muon co demo som, di theo thu tu nay:
-1. chot CSV seed contract
-2. viet script import local
-3. seed `accounts` + `init transactions`
-4. sua rule `registered + out`
-5. them `GET /api/v1/accounts`
-6. dashboard list/search account
-7. tao event gia lap de demo
+### Checklist
+- [x] can nhac them `source`
+- [x] can nhac them `seed_group`
+- [x] can nhac them `imported_at`
+- [x] can nhac bang `import_batches`
+- [x] can nhac dashboard import summary
+- [x] deterministic reset fixture script cho test seeded flow
+- [x] timezone-aware datetime cho import/backend paths
+- [x] docker backend healthcheck/readiness
+- [x] CI regression workflow cho seeded flow
+- [x] test payload contract dynamic plate de tranh collision state
 
-### Nen de sau
-- upload file import qua dashboard
-- provenance chi tiet cho moi plate
-- import batch history day du
-- OCR/runtime that
-
----
-
-## 8) Thiet ke du lieu de xuat cho seed import
-
-### Cach di toi thieu, it sua schema
-Dung bang hien tai:
-- `accounts`
-- `transactions`
-
-Policy:
-- moi plate moi -> tao `Account`
-- tao `Transaction(type='init')`
-- `registration_status='registered'`
-- `balance_vnd=100000`
-
-Uu diem:
-- nhanh
-- dung duoc ngay
-
-Nhuoc diem:
-- chua theo doi duoc provenance import tot
-
-### Cach di tot hon, nhung ton cong hon
-Them metadata import, vi du:
-- `account_source`
-- `seed_group`
-- `imported_at`
-
-Uu diem:
-- audit tot hon
-- dashboard bao cao seed tot hon
-
-Nhuoc diem:
-- phai sua schema va API
-
-Khuyen nghi:
-- MVP di theo cach toi thieu
-- provenance de phase 2
+### Thoi gian uoc tinh
+- `de sau MVP`
 
 ---
 
-## 9) Checklist nghiem thu
-- [ ] Da co file seed bien so duoc normalize va dedupe
-- [ ] Import lai khong tao duplicate account
-- [ ] Account moi duoc cong `init transaction`
-- [ ] Bien so seed khi vao cong duoc xu ly theo nhanh `registered`
-- [ ] Bien so seed khi ra cong khong bi hold sai logic
-- [ ] Bien so la van di vao nhanh `temporary_registered`
-- [ ] Dashboard tim kiem duoc bien so
-- [ ] Dashboard xem duoc so du va lich su giao dich
-- [ ] Dashboard xem duoc barrier actions va verify hold
+## 3) Thach thuc va huong giai quyet
+
+### Thach thuc 1 - Seed data khong phai du lieu van hanh that
+Rui ro:
+- plate list lay tu VNLP co the trung lap, khong dai dien user that
+
+Huong giai quyet:
+- seed chi dung cho backend/dashboard prototype
+- luon luu `source` va `seed_group`
+- tach ro seeded mode voi production mode
+
+### Thach thuc 2 - Rule backend hien tai chua khop seeded mode
+Rui ro:
+- `registered + out` hien roi vao `default_hold`
+
+Huong giai quyet:
+- sua som trong `services.py`
+- bo sung test de khoa rule
+
+### Thach thuc 3 - Import bi duplicate hoac tao lai account
+Rui ro:
+- balance va transaction history sai
+
+Huong giai quyet:
+- import idempotent
+- unique theo `plate_text`
+- init transaction chi tao cho account moi
+
+### Thach thuc 4 - Dashboard hien chua co man hinh quan tri account day du
+Rui ro:
+- du lieu da seed nhung operator khong xem duoc luong nghiep vu
+
+Huong giai quyet:
+- uu tien list/search/detail/verify queue truoc
 
 ---
 
-## 10) Ket qua mong doi sau plan nay
-Sau khi lam xong plan nay, du an se co:
-- 1 luong demo khong phu thuoc AI that
-- 1 tap bien so seed gia lap tu VNLP
-- backend co du nghiep vu tai khoan/giao dich/barrier co the test that
-- dashboard co gia tri van hanh som
+## 4) Typed Quality Gate
+- [x] API contracts typed bang Pydantic
+- [x] Dashboard typed bang TypeScript
+- [x] Moi API moi deu co schema output ro rang
+- [x] Moi script import moi deu co type annotations co ban
+- [x] Khong merge neu API va dashboard lech contract
 
-Va quan trong nhat:
-- team co the tiep tuc xay backend/dashboard trong luc nhom AI lam model that
+---
+
+## 5) KPI nghiem thu cho seeded mode
+- [x] Import duoc seed batch vao DB ma khong duplicate account
+- [x] Account moi co `registration_status=registered`
+- [x] Account moi co `balance_vnd=100000` va `init transaction`
+- [x] Registered plate `in` -> barrier `open`
+- [x] Registered plate `out` -> barrier `open`
+- [x] Unknown plate `in` -> tao `temporary_registered` va `open`
+- [x] Temporary plate `out` -> `hold` va verify duoc
+- [x] Dashboard search theo bien so chay dung
+- [x] Dashboard xem duoc balance va transactions
+- [x] Dashboard xem duoc barrier verify queue
+- [x] Demo duoc end-to-end ma khong can AI/OCR that
+
+---
+
+## 6) Thu tu uu tien de ra ket qua nhanh
+Thu tu khuyen nghi:
+1. Chot PRD seeded mode
+2. Chot contract `registered_plates_seed.csv`
+3. Tao seed CSV tu file list VNLP
+4. Viet script import DB
+5. Sua rule `registered + out`
+6. Them API list/search/summary account
+7. Lam dashboard list/detail/verify queue
+8. Tao event payload gia lap
+9. Chay end-to-end demo
+
+Neu can rut ngan hon nua:
+- bo qua provenance phase
+- bo qua import-preview UI
+- uu tien script import local thay vi upload file tren dashboard
 
