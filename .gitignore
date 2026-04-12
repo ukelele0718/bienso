@@ -14,7 +14,11 @@ dist/
 coverage/
 
 # Data artifacts
+assets/
 data/
+docs/
+guide/
+plans/
 *.zip
 
 # OS
@@ -23,6 +27,7 @@ Thumbs.db
 
 # Local tooling
 .tmp/
+.claude/
 .artifacts/
 .cursor/
 .cursor - Copy/

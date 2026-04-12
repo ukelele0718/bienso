@@ -12,28 +12,76 @@ import type {
   TransactionOut,
 } from './api-types';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
-async function parseJson<T>(res: Response, message: string): Promise<T> {
-  if (!res.ok) {
-    throw new Error(message);
+async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  const url = BASE_URL ? `${BASE_URL}${path}` : path;
+  const method = init?.method ?? 'GET';
+  const startedAt = performance.now();
+
+  console.debug('[api] request', { method, url, baseUrl: BASE_URL });
+
+  try {
+    const res = await fetch(url, init);
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    console.debug('[api] response', {
+      method,
+      url,
+      status: res.status,
+      ok: res.ok,
+      elapsedMs,
+    });
+    return res;
+  } catch (error) {
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    console.error('[api] network_error', {
+      method,
+      url,
+      elapsedMs,
+      error,
+    });
+    throw new Error(`Network error while calling ${path}: ${error instanceof Error ? error.message : 'unknown_error'}`);
   }
+}
+
+async function parseJson<T>(res: Response, message: string, path: string): Promise<T> {
+  if (!res.ok) {
+    let responseText = '';
+    try {
+      responseText = await res.text();
+    } catch {
+      responseText = '<unreadable_response_body>';
+    }
+
+    console.error('[api] http_error', {
+      path,
+      status: res.status,
+      statusText: res.statusText,
+      responseText,
+    });
+
+    throw new Error(`${message} (${res.status} ${res.statusText}) @ ${path}`);
+  }
+
   return (await res.json()) as T;
 }
 
 export async function fetchRealtimeStats(): Promise<RealtimeStatOut> {
-  const res = await fetch(`${BASE_URL}/api/v1/stats/realtime`);
-  return parseJson<RealtimeStatOut>(res, 'Failed to fetch realtime stats');
+  const path = '/api/v1/stats/realtime';
+  const res = await apiFetch(path);
+  return parseJson<RealtimeStatOut>(res, 'Failed to fetch realtime stats', path);
 }
 
 export async function fetchOcrRate(): Promise<OcrRateOut> {
-  const res = await fetch(`${BASE_URL}/api/v1/stats/ocr-success-rate`);
-  return parseJson<OcrRateOut>(res, 'Failed to fetch OCR success rate');
+  const path = '/api/v1/stats/ocr-success-rate';
+  const res = await apiFetch(path);
+  return parseJson<OcrRateOut>(res, 'Failed to fetch OCR success rate', path);
 }
 
 export async function fetchTraffic(groupBy: 'hour' | 'day'): Promise<TrafficStatOut[]> {
-  const res = await fetch(`${BASE_URL}/api/v1/stats/traffic?group_by=${groupBy}`);
-  return parseJson<TrafficStatOut[]>(res, 'Failed to fetch traffic stats');
+  const path = `/api/v1/stats/traffic?group_by=${groupBy}`;
+  const res = await apiFetch(path);
+  return parseJson<TrafficStatOut[]>(res, 'Failed to fetch traffic stats', path);
 }
 
 export async function fetchEvents(params?: {
@@ -51,26 +99,28 @@ export async function fetchEvents(params?: {
   if (params?.vehicle_type) query.set('vehicle_type', params.vehicle_type);
 
   const suffix = query.toString() ? `?${query.toString()}` : '';
-  const res = await fetch(`${BASE_URL}/api/v1/events${suffix}`);
-  return parseJson<EventOut[]>(res, 'Failed to fetch events');
+  const path = `/api/v1/events${suffix}`;
+  const res = await apiFetch(path);
+  return parseJson<EventOut[]>(res, 'Failed to fetch events', path);
 }
 
 export async function fetchAccount(plateText: string): Promise<AccountOut> {
-  const res = await fetch(`${BASE_URL}/api/v1/accounts/${encodeURIComponent(plateText)}`);
-  return parseJson<AccountOut>(res, 'Failed to fetch account');
+  const path = `/api/v1/accounts/${encodeURIComponent(plateText)}`;
+  const res = await apiFetch(path);
+  return parseJson<AccountOut>(res, 'Failed to fetch account', path);
 }
 
 export async function fetchTransactions(plateText: string): Promise<TransactionOut[]> {
-  const res = await fetch(
-    `${BASE_URL}/api/v1/accounts/${encodeURIComponent(plateText)}/transactions`
-  );
-  return parseJson<TransactionOut[]>(res, 'Failed to fetch transactions');
+  const path = `/api/v1/accounts/${encodeURIComponent(plateText)}/transactions`;
+  const res = await apiFetch(path);
+  return parseJson<TransactionOut[]>(res, 'Failed to fetch transactions', path);
 }
 
 export async function fetchBarrierActions(plateText?: string): Promise<BarrierActionOut[]> {
   const query = plateText ? `?plate=${encodeURIComponent(plateText)}` : '';
-  const res = await fetch(`${BASE_URL}/api/v1/barrier-actions${query}`);
-  return parseJson<BarrierActionOut[]>(res, 'Failed to fetch barrier actions');
+  const path = `/api/v1/barrier-actions${query}`;
+  const res = await apiFetch(path);
+  return parseJson<BarrierActionOut[]>(res, 'Failed to fetch barrier actions', path);
 }
 
 // Seeded mode API functions
@@ -91,31 +141,34 @@ export async function fetchAccounts(params?: {
   if (params?.sort_order) query.set('sort_order', params.sort_order);
 
   const suffix = query.toString() ? `?${query.toString()}` : '';
-  const res = await fetch(`${BASE_URL}/api/v1/accounts${suffix}`);
-  return parseJson<AccountListResponse>(res, 'Failed to fetch accounts');
+  const path = `/api/v1/accounts${suffix}`;
+  const res = await apiFetch(path);
+  return parseJson<AccountListResponse>(res, 'Failed to fetch accounts', path);
 }
 
 export async function fetchAccountsSummary(): Promise<AccountsSummaryResponse> {
-  const res = await fetch(`${BASE_URL}/api/v1/accounts/summary`);
-  return parseJson<AccountsSummaryResponse>(res, 'Failed to fetch accounts summary');
+  const path = '/api/v1/accounts/summary';
+  const res = await apiFetch(path);
+  return parseJson<AccountsSummaryResponse>(res, 'Failed to fetch accounts summary', path);
 }
 
 export async function fetchImportBatches(limit = 20): Promise<ImportBatchOut[]> {
-  const res = await fetch(`${BASE_URL}/api/v1/import-batches?limit=${limit}`);
-  return parseJson<ImportBatchOut[]>(res, 'Failed to fetch import batches');
+  const path = `/api/v1/import-batches?limit=${limit}`;
+  const res = await apiFetch(path);
+  return parseJson<ImportBatchOut[]>(res, 'Failed to fetch import batches', path);
 }
 
 export async function fetchImportBatchesSummary(): Promise<ImportBatchesSummaryResponse> {
-  const res = await fetch(`${BASE_URL}/api/v1/import-batches/summary`);
-  return parseJson<ImportBatchesSummaryResponse>(res, 'Failed to fetch import batches summary');
+  const path = '/api/v1/import-batches/summary';
+  const res = await apiFetch(path);
+  return parseJson<ImportBatchesSummaryResponse>(res, 'Failed to fetch import batches summary', path);
 }
 
 export async function verifyBarrier(plate: string, actor: string): Promise<BarrierActionOut> {
   const query = new URLSearchParams();
   query.set('plate', plate);
   query.set('actor', actor);
-  const res = await fetch(`${BASE_URL}/api/v1/barrier-actions/verify?${query.toString()}`, {
-    method: 'POST',
-  });
-  return parseJson<BarrierActionOut>(res, 'Failed to verify barrier action');
+  const path = `/api/v1/barrier-actions/verify?${query.toString()}`;
+  const res = await apiFetch(path, { method: 'POST' });
+  return parseJson<BarrierActionOut>(res, 'Failed to verify barrier action', path);
 }

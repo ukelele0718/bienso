@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from time import perf_counter
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -34,6 +36,37 @@ from .schemas import (
 )
 
 app = FastAPI(title="Vehicle LPR Backend", version="0.4.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    started_at = perf_counter()
+    try:
+        response = await call_next(request)
+        elapsed_ms = round((perf_counter() - started_at) * 1000, 2)
+        print(
+            f"[api] {request.method} {request.url.path} -> {response.status_code} "
+            f"({elapsed_ms}ms)"
+        )
+        return response
+    except Exception as exc:
+        elapsed_ms = round((perf_counter() - started_at) * 1000, 2)
+        print(
+            f"[api] {request.method} {request.url.path} -> 500 "
+            f"({elapsed_ms}ms) error={exc}"
+        )
+        raise
 
 
 @app.exception_handler(HTTPException)
