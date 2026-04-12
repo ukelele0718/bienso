@@ -15,6 +15,10 @@ coverage/
 
 # Data artifacts
 data/
+docs/
+guide/
+plans/
+assets/
 *.zip
 
 # OS
@@ -30,6 +34,7 @@ Thumbs.db
 runs/
 yolov8n.pt
 .agents/
+.claude/
 
 # Local review workspace
 project_review/
