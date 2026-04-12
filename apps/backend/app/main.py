@@ -163,7 +163,7 @@ def list_accounts(
             AccountListItem(
                 plate_text=acc.plate_text,
                 balance_vnd=acc.balance_vnd,
-                registration_status=acc.registration_status,
+                registration_status=acc.registration_status,  # type: ignore[arg-type]
             )
             for acc in accounts
         ],
@@ -230,7 +230,7 @@ def list_transactions(plate_text: str, db: Session = Depends(get_db)) -> List[Tr
             event_id=t.event_id,
             amount_vnd=t.amount_vnd,
             balance_after_vnd=t.balance_after_vnd,
-            type=t.type,
+            type=t.type,  # type: ignore[arg-type]
             created_at=t.created_at,
         )
         for t in txs
@@ -245,7 +245,7 @@ def mark_registered(plate_text: str, db: Session = Depends(get_db)) -> MarkRegis
         raise HTTPException(status_code=404, detail="account_not_found") from exc
     return MarkRegisteredResponse(
         plate_text=account.plate_text,
-        registration_status=account.registration_status,
+        registration_status=account.registration_status,  # type: ignore[arg-type]
     )
 
 
