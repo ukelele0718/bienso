@@ -33,6 +33,7 @@ Thumbs.db
 .cursor - Copy/
 runs/
 yolov8n.pt
+models/
 .agents/
 .claude/
 

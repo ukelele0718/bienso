@@ -1,4 +1,8 @@
 opencv-python
+numpy
+torch
 ultralytics
 pydantic
-numpy
+filterpy
+scipy
+lap
