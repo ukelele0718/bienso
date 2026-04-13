@@ -141,6 +141,84 @@ class Pipeline:
 
         return events
 
+    def process_frame_visual(
+        self,
+        frame: np.ndarray,
+        camera_id: str,
+        direction: Direction = "in",
+    ) -> tuple[np.ndarray, list[Event]]:
+        """Process one frame and return annotated frame + events."""
+        # 1. detect vehicles
+        vehicle_dets = self.vehicle_detector.detect(frame)
+        det_array = self.vehicle_detector.detect_as_array(frame)
+
+        # 2. update tracker
+        tracks = self.tracker.update(det_array)
+
+        for vd in vehicle_dets:
+            best_tid = _assign_plate_to_vehicle(
+                np.array([*vd.bbox, 0]), tracks,
+            )
+            if best_tid > 0:
+                self._track_classes[best_tid] = vd.class_name
+
+        # draw tracked vehicles (green)
+        annotated = frame.copy()
+        for trk in tracks:
+            x1, y1, x2, y2, tid = trk.astype(int)
+            cls = self._track_classes.get(tid, "vehicle")
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(annotated, f"ID{tid} {cls}", (x1, y1 - 8),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+        # 3. detect plates
+        plates = self.plate_detector.detect(frame)
+        events: list[Event] = []
+
+        for plate in plates:
+            tid = _assign_plate_to_vehicle(plate.bbox, tracks)
+
+            # draw plate bbox (red)
+            px1, py1, px2, py2 = plate.bbox.astype(int)
+            cv2.rectangle(annotated, (px1, py1), (px2, py2), (0, 0, 255), 2)
+
+            if tid < 0:
+                cv2.putText(annotated, "plate?", (px1, py1 - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                continue
+
+            # 4. OCR
+            text, conf = self.plate_ocr.read(plate.crop)
+
+            if text:
+                prev = self._track_plates.get(tid)
+                if prev is None or conf > prev[1]:
+                    self._track_plates[tid] = (text, conf)
+
+            best = self._track_plates.get(tid)
+            plate_label = best[0] if best else (text or "???")
+            plate_conf = best[1] if best else (conf or 0)
+
+            # draw OCR text (yellow on dark bg)
+            label = f"{plate_label} {plate_conf:.0%}"
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+            cv2.rectangle(annotated, (px1, py1 - th - 10), (px1 + tw + 4, py1), (0, 0, 0), -1)
+            cv2.putText(annotated, label, (px1 + 2, py1 - 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+
+            events.append(Event(
+                camera_id=camera_id,
+                timestamp=datetime.now(UTC),
+                direction=direction,
+                vehicle_type=_get_vehicle_type(tid, self._track_classes),
+                track_id=f"track_{tid}",
+                plate_text=best[0] if best else text,
+                confidence=best[1] if best else conf,
+                snapshot_path=None,
+            ))
+
+        return annotated, events
+
 
 def run_pipeline(
     video_source: str,
