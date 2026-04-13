@@ -14,7 +14,8 @@ dist/
 coverage/
 
 # Data artifacts
-data/
+data/*
+!data/test-videos/
 docs/
 guide/
 plans/
