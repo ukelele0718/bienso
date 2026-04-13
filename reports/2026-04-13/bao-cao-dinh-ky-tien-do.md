@@ -324,6 +324,26 @@ File code: apps/ai_engine/src/plate_ocr.py (104 dòng)
 Script eval: scripts/eval-ocr-baseline.py (263 dòng)
 Kết quả JSON: reports/2026-04-13/baseline-eval-results.json
 
+Kết quả trên video thật (trungdinh22-demo.mp4, 300 frames, biển VN):
+
+┌────────────────────────┬──────────────┬───────────┬────────────────────────┐
+│ Track                  │ Biển số      │ Loại xe   │ Ghi chú                │
+├────────────────────────┼──────────────┼───────────┼────────────────────────┤
+│ track_3, track_5       │ 36H82613     │ car       │ OK                     │
+│ track_8                │ 14K117970    │ motorbike │ OK                     │
+│ track_9                │ 14K117970    │ car       │ ❌ Sai loại xe          │
+└────────────────────────┴──────────────┴───────────┴────────────────────────┘
+
+Vấn đề phát hiện trên video thật:
+  • Nhận diện sai loại xe: cùng biển 14K117970 bị classify là motorbike ở
+    track_8 nhưng car ở track_9. Nguyên nhân: SORT tạo track mới khi xe biến
+    mất rồi xuất hiện lại, lúc đó YOLOv8 classify class khác. Cần cải thiện
+    bằng cách gán loại xe ổn định nhất (majority voting) cho mỗi biển số.
+  • Duplicate events: cùng biển số gửi nhiều lần khi track ID thay đổi.
+    Demo script đã xử lý deduplicate bằng key (track_id + plate_text), nhưng
+    cần cải thiện deduplicate theo plate_text thuần (bất kể track).
+  • Tốc độ: 2.1 FPS trên CPU — chưa đáp ứng realtime. Cần GPU hoặc tối ưu.
+
 [📷 HÌNH 7: Ảnh demo OCR — text vàng hiển thị kết quả đọc biển]
 Chú thích: Kết quả OCR hiển thị phía trên biển số (vàng trên nền đen)
 Gợi ý: Chụp từ --visual, frame có text OCR rõ
@@ -381,19 +401,24 @@ Gợi ý: Chụp terminal chạy curl POST /api/v1/events
 
 3.3.2. Dashboard giám sát
 
-Trạng thái: ✅ Hoàn thành
+Trạng thái: ⚠ Chưa hoàn thiện — luồng cơ bản chạy được, nhiều chức năng
+chưa test kỹ hoặc hoạt động chưa đúng.
 
 Framework: React + TypeScript (Vite)
 File code: apps/dashboard/src/ — 964 dòng
 
-Các tính năng đã triển khai:
-  ✅ Realtime stats: tổng xe vào/ra, tỉ lệ OCR thành công
-  ✅ Events list: thời gian, biển số, loại xe, hướng, barrier action
-  ✅ Accounts list: phân trang, tìm kiếm, sắp xếp
-  ✅ Account detail: lịch sử giao dịch, điều chỉnh số dư
-  ✅ Verify queue: danh sách barrier cần xác minh, nút verify
-  ✅ Traffic stats: thống kê lưu lượng theo giờ
-  ✅ Import summary: tổng hợp import batches
+Trạng thái từng tính năng:
+  ✅ Realtime events list: hiển thị events từ AI Engine — đã verify hoạt động
+  ⚠ Realtime stats: tổng xe vào/ra — hiển thị được, chưa test kỹ số liệu
+  ❓ Accounts list: phân trang, tìm kiếm, sắp xếp — chưa test kỹ
+  ❓ Account detail: lịch sử giao dịch, điều chỉnh số dư — chưa test kỹ
+  ❓ Verify queue: danh sách barrier cần xác minh — chưa test kỹ
+  ❓ Traffic stats: thống kê lưu lượng theo giờ — chưa test kỹ
+  ❓ Import summary: tổng hợp import batches — chưa test kỹ
+
+Ghi chú: Các chức năng đánh dấu ❓ đã có code frontend và API backend tương
+ứng, nhưng chưa được test luồng thực tế đầy đủ. Sẽ test chi tiết và báo cáo
+bổ sung trong giai đoạn tiếp theo.
 
 [📷 HÌNH 9: Screenshot dashboard — trang tổng quan]
 Chú thích: Giao diện dashboard hiển thị realtime stats, events list
@@ -472,7 +497,7 @@ Gợi ý: Chạy --visual, chụp screenshot cửa sổ OpenCV
 5.3. Hạn chế hiện tại
 
   1. OCR accuracy thấp (33.3% exact match) — cần hậu xử lý regex + char mapping
-  2. Chưa có đếm xe theo hướng (line-crossing)
+  2. Chưa xây dựng luồng đếm xe vào/ra theo cấu hình camera (dự kiến làm)
   3. FPS chậm trên CPU (2.1) — cần GPU hoặc tối ưu model
   4. Chưa lưu ảnh minh chứng (snapshot) biển số
   5. Chưa full eval trên toàn bộ 37,297 ảnh VNLP
@@ -492,6 +517,8 @@ Gợi ý: Chạy --visual, chụp screenshot cửa sổ OpenCV
 6. THỐNG KÊ SỐ LIỆU TỔNG HỢP
 
 ═══════════════════════════════════════════════════════════════
+
+Mã nguồn: https://github.com/ukelele0718/bienso
 
 ┌───────────────────────────────┬─────────────┐
 │ Hạng mục                     │ Số liệu     │
