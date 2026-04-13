@@ -40,3 +40,4 @@ models/
 
 # Local review workspace
 project_review/
+.agent-skills-ref/
