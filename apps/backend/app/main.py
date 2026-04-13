@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -43,6 +44,23 @@ from .schemas import (
 )
 
 app = FastAPI(title="Vehicle LPR Backend", version="0.4.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.on_event("startup")
+def _auto_create_tables() -> None:
+    """Auto-create tables when using SQLite (dev/demo mode)."""
+    from .db import Base, engine  # noqa: WPS433
+    from . import models  # noqa: F401, WPS433 — ensure models registered
+
+    if "sqlite" in str(engine.url):
+        Base.metadata.create_all(bind=engine)
 
 
 @app.exception_handler(HTTPException)
