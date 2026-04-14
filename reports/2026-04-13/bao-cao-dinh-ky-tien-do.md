@@ -477,11 +477,19 @@ Gợi ý: Chụp phần accounts table + verify section
 
 5.2.3. End-to-End Video Test (trungdinh22-demo.mp4)
 
-  Tổng frame:        300 (30 giây)
+  Lần 1 — 300 frames (toàn bộ video, 30 giây):
   Biển số phát hiện:  2 biển unique (36H82613, 14K117970)
   Events gửi backend: 23 raw events, 2 unique sau deduplicate
-  FPS trên CPU:       2.1 (chậm, cần GPU)
-  Thời gian xử lý:   140 giây cho 30 giây video
+  FPS trên CPU:       2.1
+  Thời gian xử lý:   140 giây
+
+  Lần 2 — 101 frames (test có logging, 14/04/2026):
+  Biển số phát hiện:  1 biển unique (36H82613)
+  Events gửi backend: 6 raw events, 2 unique sent (2 track IDs)
+  FPS trên CPU:       1.6
+  Thời gian xử lý:   62.1 giây
+  Vehicle type:       consistent (car), không có mismatch lần này
+  Duplicate:          1 biển có 2 events (do SORT tạo track mới)
 
 [📷 HÌNH 11: Ảnh demo visual mode — detection realtime trên video]
 Chú thích: Cửa sổ visual: bbox xanh (xe), đỏ (biển), vàng (OCR text)
@@ -489,10 +497,12 @@ Gợi ý: Chạy --visual, chụp screenshot cửa sổ OpenCV
 
 5.2.4. Backend & Tests
 
-  Unit tests:        56/56 pass (100%)
-  Thời gian test:    1.62 giây
-  API smoke test:    Health, POST event, GET accounts — all pass
+  Unit tests:        56/56 pass (100%), 1.69 giây (14/04/2026)
+  API smoke test:    5/5 pass (health, POST event, GET events/accounts/stats)
+  Dashboard API:     7/7 pass (events, stats, accounts, detail, barrier, traffic, OCR rate)
   Barrier logic:     8 test cases covering 6 nhánh — all pass
+  Chi tiết log:      test_plans_and_reports/test2-api-manual-log.txt
+                     test_plans_and_reports/test3-dashboard-api-log.txt
 
 5.3. Hạn chế hiện tại
 
@@ -531,7 +541,7 @@ Mã nguồn: https://github.com/ukelele0718/bienso
 │ Tổng dòng code TypeScript    │ 964         │
 │ Tổng dòng code (Python+TS)   │ 5,799       │ (note: không tính scripts)
 ├───────────────────────────────┼─────────────┤
-│ Git commits (main)           │ 67          │
+│ Git commits (main)           │ 74          │
 │ Git branches                 │ 5           │
 │ Planning documents           │ 14 folders  │
 ├───────────────────────────────┼─────────────┤
@@ -548,8 +558,8 @@ Mã nguồn: https://github.com/ukelele0718/bienso
 │ Plate detection rate         │ 100%        │
 │ OCR exact match (baseline)   │ 33.3%       │
 │ OCR char accuracy (baseline) │ 51.0%       │
-│ E2E video FPS (CPU)          │ 2.1         │
-│ Backend test time            │ 1.62s       │
+│ E2E video FPS (CPU)          │ 1.6–2.1     │
+│ Backend test time            │ 1.69s       │
 ├───────────────────────────────┼─────────────┤
 │ Docker services              │ 3           │
 │ Hướng dẫn chạy              │ 7 files     │
