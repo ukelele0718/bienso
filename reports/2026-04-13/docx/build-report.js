@@ -164,7 +164,7 @@ while (i < lines.length) {
     children.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 100 },
-      children: [textRun(trimmed, { bold: true, size: 32 })]
+      children: [textRun(trimmed, { bold: true, size: 36 })]  // 18pt (from ref Title style)
     }));
     i++; continue;
   }
@@ -335,26 +335,38 @@ while (i < lines.length) {
   i++;
 }
 
-// --- Build Document ---
+// --- Build Document (styles matched from bao_cao_de_xuat_de_tai_v1.docx) ---
 const doc = new Document({
   styles: {
-    default: { document: { run: { font: "Times New Roman", size: 26 } } },
+    default: {
+      document: {
+        run: { font: "Times New Roman", size: 26 },  // 13pt (Normal style)
+        paragraph: { spacing: { line: 276 } }  // 1.15 line spacing (from ref)
+      }
+    },
     paragraphStyles: [
       { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
-        run: { size: 28, bold: true, font: "Times New Roman" },
-        paragraph: { spacing: { before: 360, after: 240 }, outlineLevel: 0 } },
+        run: { size: 28, bold: true, font: "Times New Roman" },  // 14pt bold
+        paragraph: { spacing: { before: 480, after: 0 }, outlineLevel: 0 } },  // before=480 (from ref)
       { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
-        run: { size: 26, bold: true, font: "Times New Roman" },
+        run: { size: 26, bold: true, font: "Times New Roman" },  // 13pt bold
         paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 1 } },
       { id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
-        run: { size: 26, bold: true, italics: true, font: "Times New Roman" },
-        paragraph: { spacing: { before: 200, after: 100 }, outlineLevel: 2 } }
+        run: { size: 24, bold: true, font: "Times New Roman" },  // 12pt bold (from ref, no italic)
+        paragraph: { spacing: { before: 200, after: 0 }, outlineLevel: 2 } }
     ]
   },
   numbering,
   sections: [{
     properties: {
-      page: { margin: { top: 1440, bottom: 1440, left: 1701, right: 1134 } }
+      page: {
+        margin: {
+          top: 1417,     // 2.5cm (from ref)
+          bottom: 1247,  // 2.2cm (from ref)
+          left: 1701,    // 3.0cm (from ref, đóng gáy)
+          right: 1247    // 2.2cm (from ref)
+        }
+      }
     },
     headers: {
       default: new Header({ children: [new Paragraph({
@@ -365,7 +377,10 @@ const doc = new Document({
     footers: {
       default: new Footer({ children: [new Paragraph({
         alignment: AlignmentType.CENTER,
-        children: [new TextRun({ children: [PageNumber.CURRENT], font: "Times New Roman", size: 20 })]
+        children: [
+          new TextRun({ text: "Trang ", font: "Times New Roman", size: 20 }),
+          new TextRun({ children: [PageNumber.CURRENT], font: "Times New Roman", size: 20 })
+        ]
       })] })
     },
     children
