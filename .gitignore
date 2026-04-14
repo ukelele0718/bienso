@@ -38,6 +38,10 @@ models/
 .agents/
 .claude/
 
+# Large generated files
+reports/2026-04-13/docx/bao-cao.docx
+data/test-videos/trungdinh22-demo.gif
+
 # Local review workspace
 project_review/
 .agent-skills-ref/
