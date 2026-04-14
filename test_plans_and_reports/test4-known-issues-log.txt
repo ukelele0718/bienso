@@ -1,0 +1,20 @@
+=== Test 4: Known Issues Check ===
+
+--- 4.1 Vehicle type mismatch per plate ---
+  OK 29A12345: consistent as {'motorbike'}
+  OK 36H82613: consistent as {'car'}
+
+--- 4.2 Duplicate events per plate ---
+  OK: 29A12345 = 1 events
+  WARNING duplicate: 36H82613 = 2 events
+
+--- 4.3 FPS ---
+  [done] 62.1s, 101 frames processed (1.6 FPS)
+  [done] 6 raw events, 2 unique sent
+  [done] 2 unique plate+track combos
+
+--- Summary ---
+Total events: 3
+Unique plates: 2
+Type mismatch: 0
+Duplicate plates: 1

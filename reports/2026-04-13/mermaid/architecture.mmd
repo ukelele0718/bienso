@@ -1,0 +1,37 @@
+graph TB
+    subgraph "Lớp 1: Đầu vào"
+        CAM["📹 Camera / Video file"]
+    end
+
+    subgraph "Lớp 2: AI Engine (Python)"
+        VD["Vehicle Detector\n(YOLOv8n)"]
+        ST["SORT Tracker\n(Kalman Filter)"]
+        PD["Plate Detector\n(LP_detector.pt)"]
+        OCR["Plate OCR\n(LP_ocr.pt)"]
+        VD --> ST --> PD --> OCR
+    end
+
+    subgraph "Lớp 3: Backend (FastAPI :8000)"
+        API["REST API\n18 endpoints"]
+        BRL["Barrier Rules\nEngine"]
+        DB[("SQLite / PostgreSQL\n10 bảng")]
+        API --> BRL --> DB
+    end
+
+    subgraph "Lớp 4: Dashboard (React :5173)"
+        DASH["React + TypeScript\nRealtime Stats\nEvents List\nAccounts\nVerify Queue"]
+    end
+
+    CAM -->|"Video frames"| VD
+    OCR -->|"POST /api/v1/events\n(EventIn payload)"| API
+    API -->|"JSON API"| DASH
+
+    style CAM fill:#e1f5fe
+    style VD fill:#fff3e0
+    style ST fill:#fff3e0
+    style PD fill:#fff3e0
+    style OCR fill:#fff3e0
+    style API fill:#e8f5e9
+    style BRL fill:#e8f5e9
+    style DB fill:#e8f5e9
+    style DASH fill:#fce4ec

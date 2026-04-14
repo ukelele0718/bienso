@@ -1,0 +1,117 @@
+erDiagram
+    cameras ||--o{ vehicle_events : "has"
+    vehicle_events ||--|| plate_reads : "has"
+    vehicle_events ||--|| barrier_actions : "has"
+    vehicle_events ||--o{ transactions : "charged"
+    accounts ||--o{ transactions : "owns"
+    import_batches ||--o{ accounts : "imports"
+    pretrained_jobs ||--o{ pretrained_detections : "contains"
+
+    cameras {
+        string id PK
+        string name
+        string gate_type "student | staff"
+        string location
+        string stream_url
+        boolean is_active
+        datetime created_at
+    }
+
+    vehicle_events {
+        string id PK
+        string camera_id FK
+        datetime timestamp
+        string direction "in | out"
+        string vehicle_type "motorbike | car"
+        string track_id
+        datetime created_at
+    }
+
+    plate_reads {
+        string id PK
+        string event_id FK
+        string plate_text
+        float confidence
+        string snapshot_url
+        string crop_url
+        string ocr_status "success | partial | failed"
+        datetime created_at
+    }
+
+    accounts {
+        string id PK
+        string plate_text UK
+        int balance_vnd
+        string registration_status "registered | temporary_registered | unknown"
+        string source
+        string seed_group
+        string import_batch_id FK
+        datetime created_at
+        datetime updated_at
+    }
+
+    transactions {
+        string id PK
+        string account_id FK
+        string event_id FK
+        int amount_vnd
+        int balance_after_vnd
+        string type "init | event_charge | manual_adjust"
+        datetime created_at
+    }
+
+    barrier_actions {
+        string id PK
+        string event_id FK
+        string plate_text
+        string registration_status
+        string barrier_action "open | hold"
+        string barrier_reason
+        boolean needs_verification
+        string verified_by
+        datetime verified_at
+        datetime created_at
+    }
+
+    import_batches {
+        string id PK
+        string source
+        string seed_group
+        int imported_count
+        int skipped_count
+        int invalid_count
+        datetime created_at
+    }
+
+    audit_logs {
+        string id PK
+        string user_id
+        string action
+        json metadata_json
+        datetime created_at
+    }
+
+    pretrained_jobs {
+        string id PK
+        string job_type "infer | import"
+        string status "queued | running | success | failed"
+        string model_version
+        string source
+        float threshold
+        int total_items
+        int processed_items
+        string error_message
+        json result_preview_json
+        datetime created_at
+    }
+
+    pretrained_detections {
+        string id PK
+        string job_id FK
+        string plate_text
+        float confidence
+        string vehicle_type
+        datetime event_time
+        json metadata_json
+        datetime created_at
+    }

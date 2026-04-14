@@ -1,0 +1,19 @@
+[demo] Video: data/test-videos/trungdinh22-demo.mp4
+[demo] Camera: cam_gate_1, Direction: in
+[demo] Visual: False, Backend: http://localhost:8000
+[demo] Max frames: 100
+
+[info] Video: 600x800 @ 10fps, 300 frames
+[info] Loading models...
+
+
+[info] Models loaded. Processing...
+
+[detect] car       track=track_3    plate=36H82613       conf=0.90
+[sent]   → backend OK  status=temporary_registered  barrier=open
+[detect] car       track=track_5    plate=36H82613       conf=0.90
+[sent]   → backend OK  status=temporary_registered  barrier=open
+
+[done] 62.1s, 101 frames processed (1.6 FPS)
+[done] 6 raw events, 2 unique sent
+[done] 2 unique plate+track combos

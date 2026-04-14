@@ -1,0 +1,41 @@
+sequenceDiagram
+    participant AI as AI Engine
+    participant API as FastAPI Backend
+    participant CRUD as crud.create_event()
+    participant DB as Database
+
+    AI->>API: POST /api/v1/events (EventIn)
+    API->>CRUD: create_event(db, payload)
+
+    Note over CRUD,DB: Bước 1: Auto-create camera
+    CRUD->>DB: SELECT camera by id
+    alt Camera chưa tồn tại
+        CRUD->>DB: INSERT cameras
+    end
+
+    Note over CRUD,DB: Bước 2: Tạo VehicleEvent
+    CRUD->>DB: INSERT vehicle_events
+
+    Note over CRUD,DB: Bước 3: Normalize plate_text
+    CRUD->>CRUD: normalize_plate_text()
+
+    Note over CRUD,DB: Bước 4: Tạo PlateRead
+    CRUD->>DB: INSERT plate_reads
+
+    Note over CRUD,DB: Bước 5: Auto-create Account
+    CRUD->>DB: SELECT account by plate
+    alt Account chưa tồn tại
+        CRUD->>DB: INSERT accounts (balance=100,000)
+        CRUD->>DB: INSERT transactions (type=init)
+    end
+
+    Note over CRUD,DB: Bước 6: Barrier decision
+    CRUD->>CRUD: decide_barrier(status, direction)
+
+    Note over CRUD,DB: Bước 7: Tạo BarrierAction + charge
+    CRUD->>DB: INSERT barrier_actions
+    CRUD->>DB: UPDATE accounts (balance -= 2,000)
+    CRUD->>DB: INSERT transactions (type=event_charge)
+
+    CRUD-->>API: (event, barrier_action)
+    API-->>AI: EventOut JSON (barrier_action, registration_status)

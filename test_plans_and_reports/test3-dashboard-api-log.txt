@@ -1,0 +1,39 @@
+=== Test 3: Dashboard API endpoints ===
+
+--- 3.1 Realtime events ---
+Events count: 3
+OK
+
+--- 3.2 Realtime stats ---
+total_in=3, total_out=0, ocr_rate=100.0
+OK
+
+--- 3.3 Accounts list ---
+Accounts: 2, page_size=20
+  36H82613     balance=  96000 status=temporary_registered
+  29A12345     balance=  98000 status=temporary_registered
+OK
+
+--- 3.4 Account detail + transactions ---
+plate=36H82613, balance=96000, status=temporary_registered
+Transactions: 3
+  init            amount= 100000 after= 100000
+  event_charge    amount=  -2000 after=  98000
+  event_charge    amount=  -2000 after=  96000
+OK
+
+--- 3.5 Barrier actions ---
+Barrier actions: 3
+  36H82613     action=open  verify=False
+  36H82613     action=open  verify=False
+  29A12345     action=open  verify=False
+OK
+
+--- 3.6 Traffic stats ---
+Traffic buckets: 2
+OK
+
+--- 3.7 OCR success rate ---
+{
+  "success_rate": 100.0
+}

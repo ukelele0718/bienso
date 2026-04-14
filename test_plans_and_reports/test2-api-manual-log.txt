@@ -1,0 +1,37 @@
+=== Test 2.1: Health Check ===
+{
+    "status": "ok",
+    "time": "2026-04-14T03:40:17.471457+00:00"
+}
+
+=== Test 2.2: POST Event ===
+{
+    "camera_id": "cam_gate_1",
+    "timestamp": "2026-04-14T08:00:00",
+    "direction": "in",
+    "vehicle_type": "motorbike",
+    "track_id": "track_test",
+    "plate_text": "29A12345",
+    "confidence": 0.85,
+    "snapshot_url": null,
+    "id": "3e4095b6-0d32-48fb-8159-fb73ca78d0dd",
+    "registration_status": "temporary_registered",
+    "barrier_action": "open",
+    "barrier_reason": "unknown_vehicle_auto_temporary_register",
+    "needs_verification": false
+}
+
+=== Test 2.3: GET Events (last 3) ===
+Total events: 1
+  29A12345     motorbike  open 
+
+=== Test 2.4: GET Accounts ===
+Total accounts: 1
+  29A12345     balance=  98000 status=temporary_registered
+
+=== Test 2.5: GET Realtime Stats ===
+{
+    "total_in": 1,
+    "total_out": 0,
+    "ocr_success_rate": 100.0
+}
