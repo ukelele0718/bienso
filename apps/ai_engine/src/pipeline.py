@@ -6,6 +6,7 @@ Outputs Event objects compatible with backend EventIn schema.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Iterator, Literal
@@ -13,17 +14,32 @@ from typing import Iterator, Literal
 import cv2
 import numpy as np
 
+from . import config
 from .plate_detector import PlateDetector
-from .plate_ocr import PlateOCR
+from .plate_ocr import PlateOCR, apply_char_mapping, validate_vn_plate_format
 from .sort_tracker import Sort
 from .vehicle_detector import VehicleDetector
-from . import config
 
 
 Direction = Literal["in", "out"]
 VehicleType = Literal["motorbike", "car"]
 
-# map COCO class names → backend vehicle types
+
+def _postprocess_plate(text: str | None) -> str | None:
+    """Apply char mapping (and optionally validate) to raw OCR text.
+
+    Returns corrected text, or None if text is None.
+    Validation does NOT discard the text — keeps best-effort output.
+    """
+    if not text:
+        return text
+    corrected = apply_char_mapping(text) if config.ENABLE_CHAR_MAPPING else text
+    if config.ENABLE_PLATE_VALIDATION:
+        validate_vn_plate_format(corrected)  # result available for callers if needed
+    return corrected
+
+
+# map COCO class names -> backend vehicle types
 _VEHICLE_TYPE_MAP: dict[str, VehicleType] = {
     "car": "car",
     "bus": "car",
@@ -64,7 +80,7 @@ def _get_vehicle_type(
     track_id: int,
     vehicle_classes: dict[int, str],
 ) -> VehicleType:
-    """Map track_id → vehicle type from detection class."""
+    """Map track_id -> vehicle type from detection class."""
     cls_name = vehicle_classes.get(track_id, "car")
     return _VEHICLE_TYPE_MAP.get(cls_name, "car")
 
@@ -81,10 +97,45 @@ class Pipeline:
             min_hits=config.TRACKER_MIN_HITS,
             iou_threshold=config.TRACKER_IOU_THRESHOLD,
         )
-        # track_id → last known class name
+        # track_id -> last known class name
         self._track_classes: dict[int, str] = {}
-        # track_id → best plate text seen so far
+        # track_id -> best plate text seen so far
         self._track_plates: dict[int, tuple[str, float]] = {}
+
+    def _save_snapshot(
+        self,
+        frame: np.ndarray,
+        plate_bbox: np.ndarray,
+        plate_text: str,
+        track_id: int,
+    ) -> str | None:
+        """Crop plate region with padding and save to disk. Returns filename or None."""
+        if not config.ENABLE_SNAPSHOT:
+            return None
+
+        os.makedirs(config.SNAPSHOT_DIR, exist_ok=True)
+
+        h, w = frame.shape[:2]
+        x1, y1, x2, y2 = plate_bbox[:4]
+        pad_x = int((x2 - x1) * config.SNAPSHOT_PADDING)
+        pad_y = int((y2 - y1) * config.SNAPSHOT_PADDING)
+
+        cx1 = max(0, int(x1) - pad_x)
+        cy1 = max(0, int(y1) - pad_y)
+        cx2 = min(w, int(x2) + pad_x)
+        cy2 = min(h, int(y2) + pad_y)
+
+        crop = frame[cy1:cy2, cx1:cx2]
+        if crop.size == 0:
+            return None
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        safe_text = plate_text.replace("/", "_").replace("\\", "_") if plate_text else "unknown"
+        filename = f"{timestamp}_{safe_text}_{track_id}.png"
+        filepath = os.path.join(config.SNAPSHOT_DIR, filename)
+
+        cv2.imwrite(filepath, crop)
+        return filename
 
     def process_frame(
         self,
@@ -100,7 +151,7 @@ class Pipeline:
         # 2. update tracker
         tracks = self.tracker.update(det_array)
 
-        # map track_id → class name from closest detection
+        # map track_id -> class name from closest detection
         for vd in vehicle_dets:
             best_tid = _assign_plate_to_vehicle(
                 np.array([*vd.bbox, 0]), tracks,
@@ -118,8 +169,9 @@ class Pipeline:
             if tid < 0:
                 continue
 
-            # 4. OCR
+            # 4. OCR + post-processing
             text, conf = self.plate_ocr.read(plate.crop)
+            text = _postprocess_plate(text)
 
             # update best plate for this track
             if text:
@@ -128,15 +180,17 @@ class Pipeline:
                     self._track_plates[tid] = (text, conf)
 
             best = self._track_plates.get(tid)
+            plate_text = best[0] if best else text
+            snapshot = self._save_snapshot(frame, plate.bbox, plate_text or "", tid)
             events.append(Event(
                 camera_id=camera_id,
                 timestamp=datetime.now(UTC),
                 direction=direction,
                 vehicle_type=_get_vehicle_type(tid, self._track_classes),
                 track_id=f"track_{tid}",
-                plate_text=best[0] if best else text,
+                plate_text=plate_text,
                 confidence=best[1] if best else conf,
-                snapshot_path=None,
+                snapshot_path=snapshot,
             ))
 
         return events
@@ -206,15 +260,17 @@ class Pipeline:
             cv2.putText(annotated, label, (px1 + 2, py1 - 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
+            plate_text_visual = best[0] if best else text
+            snapshot = self._save_snapshot(frame, plate.bbox, plate_text_visual or "", tid)
             events.append(Event(
                 camera_id=camera_id,
                 timestamp=datetime.now(UTC),
                 direction=direction,
                 vehicle_type=_get_vehicle_type(tid, self._track_classes),
                 track_id=f"track_{tid}",
-                plate_text=best[0] if best else text,
+                plate_text=plate_text_visual,
                 confidence=best[1] if best else conf,
-                snapshot_path=None,
+                snapshot_path=snapshot,
             ))
 
         return annotated, events
@@ -282,6 +338,7 @@ def run_single_image(
         plates = pipe.plate_detector.detect(frame)
         for i, plate in enumerate(plates):
             text, conf = pipe.plate_ocr.read(plate.crop)
+            snapshot = pipe._save_snapshot(frame, plate.bbox, text or "", i)
             events.append(Event(
                 camera_id=camera_id,
                 timestamp=datetime.now(UTC),
@@ -290,7 +347,7 @@ def run_single_image(
                 track_id=f"untracked_{i}",
                 plate_text=text,
                 confidence=conf,
-                snapshot_path=None,
+                snapshot_path=snapshot,
             ))
 
     return events

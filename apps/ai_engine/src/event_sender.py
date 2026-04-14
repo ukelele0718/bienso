@@ -35,7 +35,10 @@ def send_event(
         "track_id": event.track_id,
         "plate_text": event.plate_text,
         "confidence": event.confidence,
-        "snapshot_url": event.snapshot_path,
+        "snapshot_url": (
+            f"{backend_url.rstrip('/')}/static/snapshots/{event.snapshot_path}"
+            if event.snapshot_path else None
+        ),
     }
 
     for attempt in range(1, MAX_RETRIES + 1):

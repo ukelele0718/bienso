@@ -13,6 +13,80 @@ import torch
 
 from . import config
 
+# ── Post-processing tables ────────────────────────────────────
+# Common OCR confusions: letter that looks like a digit
+CHAR_TO_DIGIT: dict[str, str] = {
+    "O": "0", "I": "1", "S": "5", "B": "8", "G": "6", "Z": "2", "D": "0",
+}
+# Common OCR confusions: digit that looks like a letter
+DIGIT_TO_CHAR: dict[str, str] = {
+    "0": "O", "1": "I", "5": "S", "8": "B", "6": "G", "2": "Z",
+}
+
+# Vietnamese plate regex patterns (after char-mapping, no separators)
+VN_PLATE_PATTERNS: list[str] = [
+    r"^\d{2}[A-Z]\d{5}$",       # 29A12345  (standard)
+    r"^\d{2}[A-Z]\d{4}$",        # 29A1234   (old 7-char)
+    r"^\d{2}[A-Z]{2}\d{5}$",     # 29AB12345 (2022 new format)
+    r"^\d{2}[A-Z]{2}\d{4}$",     # 29AB1234
+]
+_COMPILED_PATTERNS = [re.compile(p) for p in VN_PLATE_PATTERNS]
+
+
+def apply_char_mapping(plate_text: str) -> str:
+    """Position-aware character correction for Vietnamese plates.
+
+    Vietnamese format: XX[Y|YY]NNNNN
+      - pos 0,1   → digits  (province number)
+      - pos 2     → letter  (series letter)
+      - pos 2,3   → letters (new 2022 two-letter series)
+      - remaining → digits  (sequence number)
+
+    Only applied when length is 7–9 (valid plate range).
+    """
+    if not plate_text or not (7 <= len(plate_text) <= 9):
+        return plate_text
+
+    chars = list(plate_text.upper())
+    n = len(chars)
+
+    # Determine how many leading letters the series uses (1 or 2).
+    # Heuristic: if position 3 is also a letter (and we have >=9 chars or pos3 is alpha),
+    # treat positions 2-3 as the letter zone.
+    two_letter_series = (n >= 9) or (n >= 8 and chars[3].isalpha())
+    letter_end = 4 if two_letter_series else 3  # exclusive index where digits start
+
+    for i, ch in enumerate(chars):
+        if i < 2:
+            # must be digit
+            if ch.isalpha() and ch in CHAR_TO_DIGIT:
+                chars[i] = CHAR_TO_DIGIT[ch]
+        elif i < letter_end:
+            # must be letter
+            if ch.isdigit() and ch in DIGIT_TO_CHAR:
+                chars[i] = DIGIT_TO_CHAR[ch]
+        else:
+            # must be digit
+            if ch.isalpha() and ch in CHAR_TO_DIGIT:
+                chars[i] = CHAR_TO_DIGIT[ch]
+
+    return "".join(chars)
+
+
+def validate_vn_plate_format(plate_text: str) -> tuple[bool, str | None]:
+    """Validate plate text against known Vietnamese plate patterns.
+
+    Returns:
+        (is_valid, matched_pattern_string) — matched_pattern is None when invalid.
+    """
+    if not plate_text:
+        return False, None
+    text = plate_text.upper()
+    for pattern, compiled in zip(VN_PLATE_PATTERNS, _COMPILED_PATTERNS):
+        if compiled.match(text):
+            return True, pattern
+    return False, None
+
 
 class PlateOCR:
     """Read license plate text from a cropped plate image."""

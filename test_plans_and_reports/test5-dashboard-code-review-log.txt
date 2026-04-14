@@ -1,0 +1,222 @@
+TEST REPORT: Dashboard Code Review & Bug Fix
+Date: 2026-04-14
+Reviewer: debugger agent
+Scope: apps/dashboard/src/ — code review only, no dev server started
+
+===================================================================
+FILES REVIEWED
+===================================================================
+- apps/dashboard/src/main.tsx          (592 → 603 lines after fixes)
+- apps/dashboard/src/api.ts            (161 lines, no changes)
+- apps/dashboard/src/api-types.ts      (189 lines, no changes)
+- apps/dashboard/src/components/VerifyQueueSection.tsx   (130 lines, no changes)
+- apps/dashboard/src/components/ImportSummarySection.tsx (107 lines, no changes)
+- apps/backend/app/main.py             (read-only, reference)
+- apps/backend/app/schemas.py          (read-only, reference)
+
+===================================================================
+TYPESCRIPT COMPILE RESULT
+===================================================================
+BEFORE fixes: PASS (0 errors)
+AFTER fixes:  PASS (0 errors)
+Command: npx tsc --noEmit
+
+===================================================================
+API URL / ENDPOINT MATCHING
+===================================================================
+All frontend API calls match backend routes exactly:
+
+  fetchRealtimeStats()        → GET /api/v1/stats/realtime             ✓
+  fetchOcrRate()              → GET /api/v1/stats/ocr-success-rate      ✓
+  fetchTraffic(groupBy)       → GET /api/v1/stats/traffic?group_by=...  ✓
+  fetchEvents(params)         → GET /api/v1/events                      ✓
+  fetchAccount(plate)         → GET /api/v1/accounts/{plate_text}       ✓
+  fetchTransactions(plate)    → GET /api/v1/accounts/{plate}/transactions ✓
+  fetchBarrierActions(plate?) → GET /api/v1/barrier-actions             ✓
+  fetchAccounts(params)       → GET /api/v1/accounts                    ✓
+  fetchAccountsSummary()      → GET /api/v1/accounts/summary            ✓
+  fetchImportBatches(limit)   → GET /api/v1/import-batches?limit=...    ✓
+  fetchImportBatchesSummary() → GET /api/v1/import-batches/summary      ✓
+  verifyBarrier(plate,actor)  → POST /api/v1/barrier-actions/verify     ✓
+    (query params: plate, actor — matches backend signature)
+
+Route ordering in FastAPI (shadow risk checked):
+  /api/v1/accounts/summary before /api/v1/accounts/{plate_text}     ✓ safe
+  /api/v1/import-batches/summary after /api/v1/import-batches       ✓ safe (exact vs prefix)
+  /api/v1/pretrained/jobs/summary before /api/v1/pretrained/jobs/{id} ✓ safe
+
+===================================================================
+TYPESCRIPT TYPE MATCHING (frontend api-types.ts vs backend schemas.py)
+===================================================================
+EventOut:
+  - id, camera_id, timestamp, direction, vehicle_type, track_id,
+    plate_text, confidence, snapshot_url, registration_status,
+    barrier_action, barrier_reason, needs_verification             ✓
+
+RealtimeStatOut:
+  - total_in: number, total_out: number, ocr_success_rate: float   ✓
+
+OcrRateOut:
+  - success_rate: float                                             ✓
+
+TrafficStatOut:
+  - bucket: string, total_in: int, total_out: int                   ✓
+
+AccountOut:
+  - plate_text, balance_vnd (int), registration_status             ✓
+
+AccountListItem:
+  - plate_text, balance_vnd (int), registration_status             ✓
+  NOTE: Backend schema uses int, frontend type uses number — compatible ✓
+
+AccountListResponse:
+  - items, total, page, page_size, sort_by, sort_order             ✓
+
+AccountsSummaryResponse:
+  - total_accounts, registered_accounts, temporary_registered_accounts ✓
+
+BarrierActionOut:
+  - id, event_id, plate_text, registration_status, barrier_action,
+    barrier_reason, needs_verification, verified_by, verified_at,
+    created_at                                                      ✓
+
+ImportBatchOut:
+  - id, source, seed_group, imported_count, skipped_count,
+    invalid_count, created_at                                       ✓
+
+ImportBatchesSummaryResponse:
+  - total_batches, total_imported, total_skipped, total_invalid     ✓
+
+TransactionOut:
+  - id, account_id, event_id, amount_vnd, balance_after_vnd,
+    type, created_at                                                ✓
+
+===================================================================
+BUGS FOUND
+===================================================================
+
+BUG-1 [FIXED] — Pagination display shows "Showing 1 - 0 of 0" when empty
+  File: apps/dashboard/src/main.tsx, line ~533
+  Severity: Low (cosmetic)
+  Description: When accountsTotal=0 and accountsList is empty,
+    the range formula ((page-1)*pageSize)+1 = 1 and
+    Math.min(page*pageSize, 0) = 0, producing "Showing 1 - 0 of 0".
+  Fix: Guard with conditional — show "No results" when total=0.
+
+BUG-2 [FIXED] — handleAccountsSearch uses stale page state
+  File: apps/dashboard/src/main.tsx, line ~223-226
+  Severity: Medium (wrong data shown briefly)
+  Description: handleAccountsSearch() called setAccountsPage(1) then
+    immediately called loadAccountsList(). Since setState is async,
+    loadAccountsList (useCallback closure) still read the old page value.
+    This sent a request with the old page before the useEffect re-fired
+    with page=1. If the user was on page 3 and searched, they'd briefly
+    see page-3 results before getting page-1 results.
+  Fix: When already on page 1, call loadAccountsList directly.
+    When on other pages, only setAccountsPage(1) — let the useEffect
+    handle the reload after state settles.
+
+BUG-3 [NOT FIXED — intentional design] — accountsPlateFilter missing from useEffect deps
+  File: apps/dashboard/src/main.tsx, line 137-139
+  Severity: Low (by design)
+  Description: The effect that reloads accounts on filter changes does not
+    include accountsPlateFilter. Plate search is button-triggered only.
+    Changing plate text does not auto-search. This is acceptable UX.
+  Decision: Left as-is. Added eslint-disable comment for clarity.
+
+BUG-4 [NO FIX NEEDED] — VerifyQueueSection props loading/error not passed
+  File: apps/dashboard/src/main.tsx, lines ~578-587
+  Severity: Low
+  Description: VerifyQueueSection accepts optional loading and error props
+    but main.tsx never passes them. The component uses defaults (loading=false,
+    error=undefined). No crash — queue errors surface in console.error only.
+  Decision: Acceptable. The component gracefully falls back to defaults.
+
+BUG-5 [NO FIX NEEDED] — ImportSummarySection props loading/error not passed
+  Same pattern as BUG-4. Acceptable.
+
+BUG-6 [NOT A BUG — confirmed] — fetchAccountsSummary vs fetchAccount URL collision
+  GET /api/v1/accounts/summary could potentially match
+  GET /api/v1/accounts/{plate_text} with plate_text="summary".
+  FastAPI declares /accounts/summary (line 174) before /accounts/{plate_text}
+  (line 206), so the literal route wins. Safe.
+
+===================================================================
+STATE MANAGEMENT REVIEW
+===================================================================
+- loadRealtime: sets global loading/error — correct
+- loadAccountsSummary: console.error only — minor inconsistency, not a crash
+- loadAccountsList: console.error only — no global error feedback
+- loadVerifyQueue: console.error only
+- loadImportSummary: console.error only
+- handleVerify: sets global error on failure — correct
+- handleSearch: sets global loading/error — correct
+
+Assessment: Non-critical loaders (summary, accounts list, queue, imports)
+  use silent console.error. Only primary data fetch and search use the
+  visible error banner. Consistent with the design pattern in the file.
+
+===================================================================
+COMPONENT PROPS REVIEW
+===================================================================
+ImportSummarySection:
+  Props: summary, batches, onRefresh, loading?, error?
+  Passed from main.tsx: summary={importSummary}, batches={importBatches},
+    onRefresh={...}    [loading and error omitted — defaults apply]
+  Types match: ✓
+
+VerifyQueueSection:
+  Props: queue, verifyingPlate, onRefresh, onVerify, loading?, error?
+  Passed from main.tsx: queue={verifyQueue}, verifyingPlate={verifyingPlate},
+    onRefresh={...}, onVerify={...}    [loading and error omitted — defaults apply]
+  Types match: ✓
+
+===================================================================
+CHANGES MADE
+===================================================================
+File: apps/dashboard/src/main.tsx
+
+  1. Pagination display guard (line ~533-535):
+     OLD: Showing {((accountsPage-1)*accountsPageSize)+1} - {Math.min(...)} of {accountsTotal}
+     NEW: Conditional — shows "No results" when accountsTotal===0,
+          otherwise the range string.
+
+  2. handleAccountsSearch fix (lines ~223-230):
+     OLD: setAccountsPage(1); void loadAccountsList();
+     NEW: if (accountsPage===1) { void loadAccountsList(); }
+          else { setAccountsPage(1); }
+     Rationale: avoid double-fetch with stale page value.
+
+  3. Added eslint-disable comment on useEffect for plate filter deps
+     to document the intentional omission.
+
+===================================================================
+MANUAL BROWSER TESTING STILL NEEDED
+===================================================================
+The following features were verified at the code level but need
+browser testing to confirm runtime behavior:
+
+1. Account List — pagination: next/prev buttons, page count display
+2. Account List — search by plate + status filter combo
+3. Account List — sort by balance/plate/created_at + asc/desc
+4. Verify Queue — verify button flow (calls POST verify, reloads queue)
+5. Traffic stats — hourly grouping display in summary row
+6. Import Summary — batch table renders correctly
+7. Search account — datetime-local input to backend datetime parsing
+8. Realtime events — snapshot_url image thumbnails render
+9. Refresh button — reloads realtime data correctly
+10. Error banner — displays when backend is unreachable
+
+===================================================================
+SUMMARY
+===================================================================
+Status: PASS (TypeScript compiles, 2 real bugs fixed)
+
+Bugs fixed: 2
+  - BUG-1: Pagination "Showing 1 - 0 of 0" display (cosmetic)
+  - BUG-2: handleAccountsSearch stale page state causing double-fetch
+
+No TypeScript type mismatches found between frontend and backend.
+No API URL mismatches found.
+No component prop type errors found.
+All FastAPI routes declared in safe order (no shadow conflicts).

@@ -4,12 +4,14 @@ from __future__ import annotations
 # Reason: SQLAlchemy Mapped[str] -> Pydantic Literal[...] + dict -> Pydantic model;
 # validated at runtime by Pydantic.
 
+import os
 from datetime import UTC, datetime
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from . import crud, crud_pretrained
@@ -476,3 +478,9 @@ def get_pretrained_job(job_id: str, db: Session = Depends(get_db)) -> Pretrained
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "time": datetime.now(UTC).isoformat()}
+
+
+# Static files — must be mounted after all API routes to avoid path conflicts
+_snapshots_dir = os.environ.get("SNAPSHOT_DIR", "snapshots")
+if os.path.isdir(_snapshots_dir):
+    app.mount("/static/snapshots", StaticFiles(directory=_snapshots_dir), name="snapshots")

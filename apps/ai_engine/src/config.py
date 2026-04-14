@@ -28,3 +28,12 @@ TRACKER_IOU_THRESHOLD = float(os.getenv("AI_TRACKER_IOU", "0.3"))
 
 # ── OCR row clustering ───────────────────────────────────────
 OCR_ROW_GAP_RATIO = float(os.getenv("AI_OCR_ROW_GAP", "0.30"))
+
+# ── OCR post-processing ──────────────────────────────────────
+ENABLE_CHAR_MAPPING = os.environ.get("ENABLE_CHAR_MAPPING", "true").lower() == "true"
+ENABLE_PLATE_VALIDATION = os.environ.get("ENABLE_PLATE_VALIDATION", "true").lower() == "true"
+
+# ── Snapshot saving ──────────────────────────────────────────
+SNAPSHOT_DIR = os.environ.get("SNAPSHOT_DIR", "snapshots")
+SNAPSHOT_PADDING = float(os.environ.get("SNAPSHOT_PADDING", "0.15"))
+ENABLE_SNAPSHOT = os.environ.get("ENABLE_SNAPSHOT", "true").lower() == "true"

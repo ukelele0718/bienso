@@ -134,6 +134,7 @@ function App(): React.JSX.Element {
   }, []);
 
   // Reload accounts list when filters or page changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     void loadAccountsList();
   }, [accountsPage, accountsStatusFilter, accountsSortBy, accountsSortOrder]);
@@ -221,8 +222,13 @@ function App(): React.JSX.Element {
   }
 
   function handleAccountsSearch(): void {
-    setAccountsPage(1);
-    void loadAccountsList();
+    if (accountsPage === 1) {
+      // Page is already 1; useEffect won't re-fire, so trigger directly
+      void loadAccountsList();
+    } else {
+      // Setting page to 1 will trigger the useEffect to reload
+      setAccountsPage(1);
+    }
   }
 
   async function handleSearch(): Promise<void> {
@@ -334,7 +340,12 @@ function App(): React.JSX.Element {
                     <td style={{ padding: '6px 0', color: '#0f172a' }}>
                       {new Date(event.timestamp).toLocaleTimeString()}
                     </td>
-                    <td style={{ padding: '6px 0' }}>{event.plate_text ?? '--'}</td>
+                    <td style={{ padding: '6px 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {event.plate_text ?? '--'}
+                      {event.snapshot_url && (
+                        <img src={event.snapshot_url} alt="plate" style={{ width: 50, height: 30, objectFit: 'cover', marginLeft: 4, borderRadius: 2 }} />
+                      )}
+                    </td>
                     <td style={{ padding: '6px 0' }}>{event.vehicle_type}</td>
                     <td style={{ padding: '6px 0' }}>{event.direction}</td>
                     <td style={{ padding: '6px 0' }}>{event.barrier_action ?? '--'}</td>
@@ -404,7 +415,12 @@ function App(): React.JSX.Element {
                 {searchEvents.map((event) => (
                   <tr key={event.id}>
                     <td style={{ padding: '6px 0' }}>{new Date(event.timestamp).toLocaleString()}</td>
-                    <td style={{ padding: '6px 0' }}>{event.plate_text ?? '--'}</td>
+                    <td style={{ padding: '6px 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {event.plate_text ?? '--'}
+                      {event.snapshot_url && (
+                        <img src={event.snapshot_url} alt="plate" style={{ width: 50, height: 30, objectFit: 'cover', marginLeft: 4, borderRadius: 2 }} />
+                      )}
+                    </td>
                     <td style={{ padding: '6px 0' }}>{event.direction}</td>
                     <td style={{ padding: '6px 0' }}>{event.barrier_action ?? '--'}</td>
                   </tr>
@@ -520,7 +536,9 @@ function App(): React.JSX.Element {
               {/* Pagination */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
                 <span style={{ color: '#64748b', fontSize: '14px' }}>
-                  Showing {((accountsPage - 1) * accountsPageSize) + 1} - {Math.min(accountsPage * accountsPageSize, accountsTotal)} of {accountsTotal}
+                  {accountsTotal === 0
+                    ? 'No results'
+                    : `Showing ${((accountsPage - 1) * accountsPageSize) + 1} - ${Math.min(accountsPage * accountsPageSize, accountsTotal)} of ${accountsTotal}`}
                 </span>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
