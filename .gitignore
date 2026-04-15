@@ -45,3 +45,6 @@ data/test-videos/trungdinh22-demo.gif
 # Local review workspace
 project_review/
 .agent-skills-ref/
+
+# Private Q&A notes
+cauhoi/
