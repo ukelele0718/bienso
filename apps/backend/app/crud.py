@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4, uuid5
 import re
 from typing import Any
+
+_CAMERA_NS = UUID("00000000-0000-5000-a000-000000000001")
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -50,13 +52,23 @@ def _append_audit_log(
     )
 
 
+def _coerce_camera_id(raw: str) -> str:
+    """Ensure camera_id is a valid UUID string. Non-UUID strings get a deterministic UUID5."""
+    try:
+        UUID(raw)
+        return raw
+    except ValueError:
+        return str(uuid5(_CAMERA_NS, raw))
+
+
 def create_event(db: Session, payload: dict) -> tuple[VehicleEvent, BarrierAction | None]:
-    camera_id = payload["camera_id"]
+    camera_id = _coerce_camera_id(payload["camera_id"])
     camera = db.execute(select(Camera).where(Camera.id == camera_id)).scalar_one_or_none()
     if camera is None:
+        original_name = payload["camera_id"]
         camera = Camera(
             id=camera_id,
-            name=f"Auto camera {camera_id[:8]}",
+            name=f"Auto camera {original_name}",
             gate_type="student",
             location="auto_seeded_mode",
             stream_url=None,

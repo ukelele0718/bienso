@@ -6,7 +6,9 @@ Outputs Event objects compatible with backend EventIn schema.
 
 from __future__ import annotations
 
+import logging
 import os
+from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Iterator, Literal
@@ -20,6 +22,7 @@ from .plate_ocr import PlateOCR, apply_char_mapping, validate_vn_plate_format
 from .sort_tracker import Sort
 from .vehicle_detector import VehicleDetector
 
+log = logging.getLogger(__name__)
 
 Direction = Literal["in", "out"]
 VehicleType = Literal["motorbike", "car"]
@@ -78,11 +81,14 @@ def _assign_plate_to_vehicle(
 
 def _get_vehicle_type(
     track_id: int,
-    vehicle_classes: dict[int, str],
+    vehicle_classes: dict[int, Counter],
 ) -> VehicleType:
-    """Map track_id -> vehicle type from detection class."""
-    cls_name = vehicle_classes.get(track_id, "car")
-    return _VEHICLE_TYPE_MAP.get(cls_name, "car")
+    """Map track_id -> vehicle type using majority vote across all detections."""
+    votes = vehicle_classes.get(track_id)
+    if not votes:
+        return "car"
+    most_common_cls = votes.most_common(1)[0][0]
+    return _VEHICLE_TYPE_MAP.get(most_common_cls, "car")
 
 
 class Pipeline:
@@ -97,10 +103,16 @@ class Pipeline:
             min_hits=config.TRACKER_MIN_HITS,
             iou_threshold=config.TRACKER_IOU_THRESHOLD,
         )
-        # track_id -> last known class name
-        self._track_classes: dict[int, str] = {}
+        # track_id -> vote counts per class name (majority voting)
+        self._track_class_votes: dict[int, Counter] = {}
         # track_id -> best plate text seen so far
         self._track_plates: dict[int, tuple[str, float]] = {}
+
+    def _vote_track_class(self, track_id: int, class_name: str) -> None:
+        """Record one vote for class_name on this track_id."""
+        if track_id not in self._track_class_votes:
+            self._track_class_votes[track_id] = Counter()
+        self._track_class_votes[track_id][class_name] += 1
 
     def _save_snapshot(
         self,
@@ -151,13 +163,13 @@ class Pipeline:
         # 2. update tracker
         tracks = self.tracker.update(det_array)
 
-        # map track_id -> class name from closest detection
+        # map track_id -> class name from closest detection (vote for majority)
         for vd in vehicle_dets:
             best_tid = _assign_plate_to_vehicle(
                 np.array([*vd.bbox, 0]), tracks,
             )
             if best_tid > 0:
-                self._track_classes[best_tid] = vd.class_name
+                self._vote_track_class(best_tid, vd.class_name)
 
         # 3. detect plates in full frame
         plates = self.plate_detector.detect(frame)
@@ -181,12 +193,18 @@ class Pipeline:
 
             best = self._track_plates.get(tid)
             plate_text = best[0] if best else text
+            vehicle_type = _get_vehicle_type(tid, self._track_class_votes)
+            votes = self._track_class_votes.get(tid, Counter())
+            log.info(
+                "track=%s votes=%s → %s",
+                tid, dict(votes), vehicle_type,
+            )
             snapshot = self._save_snapshot(frame, plate.bbox, plate_text or "", tid)
             events.append(Event(
                 camera_id=camera_id,
                 timestamp=datetime.now(UTC),
                 direction=direction,
-                vehicle_type=_get_vehicle_type(tid, self._track_classes),
+                vehicle_type=vehicle_type,
                 track_id=f"track_{tid}",
                 plate_text=plate_text,
                 confidence=best[1] if best else conf,
@@ -214,13 +232,14 @@ class Pipeline:
                 np.array([*vd.bbox, 0]), tracks,
             )
             if best_tid > 0:
-                self._track_classes[best_tid] = vd.class_name
+                self._vote_track_class(best_tid, vd.class_name)
 
         # draw tracked vehicles (green)
         annotated = frame.copy()
         for trk in tracks:
             x1, y1, x2, y2, tid = trk.astype(int)
-            cls = self._track_classes.get(tid, "vehicle")
+            votes = self._track_class_votes.get(int(tid))
+            cls = votes.most_common(1)[0][0] if votes else "vehicle"
             cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(annotated, f"ID{tid} {cls}", (x1, y1 - 8),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
@@ -261,12 +280,18 @@ class Pipeline:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
             plate_text_visual = best[0] if best else text
+            vehicle_type = _get_vehicle_type(tid, self._track_class_votes)
+            votes = self._track_class_votes.get(tid, Counter())
+            log.info(
+                "track=%s votes=%s → %s",
+                tid, dict(votes), vehicle_type,
+            )
             snapshot = self._save_snapshot(frame, plate.bbox, plate_text_visual or "", tid)
             events.append(Event(
                 camera_id=camera_id,
                 timestamp=datetime.now(UTC),
                 direction=direction,
-                vehicle_type=_get_vehicle_type(tid, self._track_classes),
+                vehicle_type=vehicle_type,
                 track_id=f"track_{tid}",
                 plate_text=plate_text_visual,
                 confidence=best[1] if best else conf,

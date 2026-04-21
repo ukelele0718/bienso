@@ -28,8 +28,8 @@ def to_event_out(event: VehicleEvent, plate_read: PlateRead | None, barrier_acti
 
 def to_barrier_action_out(row: BarrierAction) -> BarrierActionOut:
     return BarrierActionOut(
-        id=row.id,
-        event_id=row.event_id,
+        id=str(row.id),
+        event_id=str(row.event_id),
         plate_text=row.plate_text,
         registration_status=row.registration_status,
         barrier_action=row.barrier_action,

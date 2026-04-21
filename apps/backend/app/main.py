@@ -185,7 +185,7 @@ def get_import_batches(
     rows = crud.list_import_batches(db, limit=limit)
     return [
         ImportBatchOut(
-            id=row.id,
+            id=str(row.id),
             source=row.source,
             seed_group=row.seed_group,
             imported_count=row.imported_count,
@@ -221,9 +221,9 @@ def list_transactions(plate_text: str, db: Session = Depends(get_db)) -> List[Tr
     txs = crud.list_transactions(db, account.id)
     return [
         TransactionOut(
-            id=t.id,
-            account_id=t.account_id,
-            event_id=t.event_id,
+            id=str(t.id),
+            account_id=str(t.account_id),
+            event_id=str(t.event_id) if t.event_id else None,
             amount_vnd=t.amount_vnd,
             balance_after_vnd=t.balance_after_vnd,
             type=t.type,

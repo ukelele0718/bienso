@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field
+
+# Coerce UUID objects → str automatically in all schema fields typed as _Str.
+# Needed because PostgreSQL uuid columns return Python UUID objects from SQLAlchemy,
+# while our Pydantic models declare those fields as str.
+_Str = Annotated[str, BeforeValidator(lambda v: str(v) if isinstance(v, UUID) else v)]
 
 Direction = Literal["in", "out"]
 VehicleType = Literal["motorbike", "car"]
@@ -29,7 +35,7 @@ class EventIn(BaseModel):
 
 
 class EventOut(EventIn):
-    id: str
+    id: _Str
     registration_status: RegistrationStatus | None = None
     barrier_action: BarrierActionType | None = None
     barrier_reason: str | None = None
@@ -45,8 +51,8 @@ class EventQuery(BaseModel):
 
 
 class PlateReadOut(BaseModel):
-    id: str
-    event_id: str
+    id: _Str
+    event_id: _Str
     plate_text: str | None
     confidence: float | None
     snapshot_url: str | None
@@ -61,9 +67,9 @@ class AccountOut(BaseModel):
 
 
 class TransactionOut(BaseModel):
-    id: str
-    account_id: str
-    event_id: str | None
+    id: _Str
+    account_id: _Str
+    event_id: _Str | None
     amount_vnd: int
     balance_after_vnd: int
     type: TransactionType
@@ -71,8 +77,8 @@ class TransactionOut(BaseModel):
 
 
 class BarrierActionOut(BaseModel):
-    id: str
-    event_id: str
+    id: _Str
+    event_id: _Str
     plate_text: str | None
     registration_status: RegistrationStatus
     barrier_action: BarrierActionType
@@ -131,7 +137,7 @@ class AccountsSummaryResponse(BaseModel):
 
 
 class ImportBatchOut(BaseModel):
-    id: str
+    id: _Str
     source: str
     seed_group: str | None = None
     imported_count: int
@@ -162,7 +168,7 @@ class AdjustBalanceResponse(BaseModel):
     plate_text: str
     balance_vnd: int
     delta_vnd: int
-    transaction_id: str
+    transaction_id: _Str
 
 
 class PretrainedInferIn(BaseModel):
@@ -185,8 +191,8 @@ class PretrainedImportIn(BaseModel):
 
 
 class PretrainedDetectionOut(BaseModel):
-    id: str
-    job_id: str
+    id: _Str
+    job_id: _Str
     plate_text: str | None = None
     confidence: float | None = None
     vehicle_type: VehicleType | None = None
@@ -196,7 +202,7 @@ class PretrainedDetectionOut(BaseModel):
 
 
 class PretrainedJobOut(BaseModel):
-    id: str
+    id: _Str
     job_type: PretrainedJobType
     status: PretrainedJobStatus
     model_version: str
