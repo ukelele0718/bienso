@@ -31,8 +31,13 @@ class PlateDetector:
         self.confidence = confidence or config.PLATE_CONFIDENCE
 
         # auto-detect model type from filename if not specified
+        # Priority: explicit "finetuned" or "yolov8" in name → v8; else legacy LP_detector → v5
         if model_type is None:
-            model_type = "yolov5" if "LP_detector" in path else "yolov8"
+            path_lower = path.lower()
+            if "finetuned" in path_lower or "yolov8" in path_lower:
+                model_type = "yolov8"
+            else:
+                model_type = "yolov5"
 
         self.model_type = model_type
         if model_type == "yolov5":

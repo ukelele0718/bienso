@@ -4,11 +4,12 @@ from __future__ import annotations
 # Reason: SQLAlchemy Mapped[str] -> Pydantic Literal[...] + dict -> Pydantic model;
 # validated at runtime by Pydantic.
 
+import asyncio
 import os
 from datetime import UTC, datetime
 from typing import List
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -49,6 +50,33 @@ from .schemas import (
 
 app = FastAPI(title="Vehicle LPR Backend", version="0.4.0")
 
+
+class ConnectionManager:
+    """Manages active WebSocket connections for event broadcasting."""
+
+    def __init__(self) -> None:
+        self.active: set[WebSocket] = set()
+
+    async def connect(self, ws: WebSocket) -> None:
+        await ws.accept()
+        self.active.add(ws)
+
+    def disconnect(self, ws: WebSocket) -> None:
+        self.active.discard(ws)
+
+    async def broadcast(self, message: dict) -> None:
+        dead: set[WebSocket] = set()
+        for ws in list(self.active):
+            try:
+                await ws.send_json(message)
+            except Exception:
+                dead.add(ws)
+        for ws in dead:
+            self.active.discard(ws)
+
+
+manager = ConnectionManager()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -85,9 +113,23 @@ async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse
     response_model=EventOut,
     responses={400: {"model": ApiErrorOut}, 404: {"model": ApiErrorOut}},
 )
-def create_event(payload: EventIn, db: Session = Depends(get_db)) -> EventOut:
+async def create_event(payload: EventIn, db: Session = Depends(get_db)) -> EventOut:
     event, barrier_action = crud.create_event(db, payload.model_dump())
     plate_read = crud.get_event_plate_meta(db, event.id)
+
+    # Broadcast new event to all WebSocket subscribers (fire-and-forget)
+    if plate_read is not None:
+        asyncio.create_task(
+            manager.broadcast({
+                "type": "new_event",
+                "event_id": str(event.id),
+                "plate_text": plate_read.plate_text,
+                "direction": event.direction,
+                "vehicle_type": event.vehicle_type,
+                "timestamp": event.timestamp.isoformat(),
+                "snapshot_url": plate_read.snapshot_url,
+            })
+        )
 
     return to_event_out(event, plate_read, barrier_action)
 
@@ -493,6 +535,18 @@ def get_pretrained_job(job_id: str, db: Session = Depends(get_db)) -> Pretrained
             for d in detections
         ],
     )
+
+
+@app.websocket("/ws/events")
+async def websocket_events(websocket: WebSocket) -> None:
+    """WebSocket endpoint for realtime event push to dashboard clients."""
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Receive keepalive pings; content is discarded
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 
 @app.get("/health")

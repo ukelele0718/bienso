@@ -14,28 +14,33 @@
 
 ---
 
-## 2. Trạng thái hiện tại (cập nhật: 15/04/2026)
+## 2. Trạng thái hiện tại (cập nhật: 21/04/2026 — sau parallel sprint)
 
 ### Đã xong ✅
 
 | Module | Chi tiết |
 |--------|---------|
 | AI Engine | YOLOv8n + SORT + LP_detector + LP_ocr (gap-based 2-row clustering) |
-| Backend | FastAPI + 18 API + 6 barrier rules + SQLAlchemy + 10 DB tables |
-| Dashboard | React + TypeScript, events + accounts + verify queue |
+| Backend | FastAPI + 22 API endpoints + 6 barrier rules + SQLAlchemy + 10 DB tables |
+| Dashboard | React + TypeScript, 7 sections verified (events, accounts, verify, traffic, cameras) |
 | E2E flow | Video → AI → Backend → Dashboard hoạt động |
 | OCR post-processing | Char mapping + regex validate (đã tắt char mapping mặc định) |
 | Snapshot saving | Crop biển số + serve static + dashboard thumbnail |
 | Full OCR eval | 3,731 ảnh VNLP: 37.8% exact match, 53.8% char accuracy |
+| Vehicle voting | Majority voting fix: cùng biển trên tracks khác nhau → type ổn định |
+| Event dedup | Server-side deduplicate by (plate_text, direction) trong 30s window |
+| Dashboard UI | 5/7 TCs verified, 2 partial TCs → full (mark-registered, adjust-balance, traffic toggle) |
+| Cameras section | GET /api/v1/cameras + CamerasSection.tsx component (Phase 09) |
 | Slide bảo vệ | 27 slides tại `slides/bao-ve-do-an.pptx` |
+| Chapter 1 draft | 412 dòng văn bản lý thuyết (6 sections, chưa edit cuối) |
+| Unit tests | 95 backend + 45 AI engine = **140 total** (all pass) |
 | Báo cáo định kỳ | `.md` + `.docx` tại `reports/2026-04-13/` và `reports/2026-04-15/` |
 
 ### Còn lại ⚠
 
-- Viết văn bản lý thuyết Ch.1 (đã có research 19 references, chưa viết thành văn)
-- Test dashboard thủ công trên browser (code review OK, chưa verify UI)
-- Chụp screenshot dashboard mới (sau fix bugs + snapshot thumbnail)
-- Deduplicate events by plate_text (fix known issue)
+- Edit + finalize Chapter 1 text (draft 412 dòng OK, chỉ cần refine)
+- Test dashboard thủ công trên browser (5/7 TCs verified qua code, chưa manual test)
+- Chụp screenshot dashboard mới (after all bugfixes)
 - Viết báo cáo chính thức (điền phân công, tên sinh viên)
 
 ---
@@ -55,7 +60,11 @@
 - **OCR char mapping**: ĐÃ TẮT mặc định (`ENABLE_CHAR_MAPPING=false`). Lý do: giảm exact match 37.8% → 32.7% trên 3,731 ảnh. Heuristic 2-letter series nhầm biển 9 ký tự. Xem `test_plans_and_reports/test6-full-ocr-eval-3731.md`.
 - **OCR regex validate**: Bật (`ENABLE_PLATE_VALIDATION=true`) — chỉ kiểm tra, không sửa.
 - **Snapshot saving**: Bật mặc định. Folder `snapshots/`, padding 15%.
-- **Backend tests**: 56/56 pass. OCR tests: 33/33 pass. Tổng **89 unit tests**.
+- **LP_detector bottleneck** (QUAN TRỌNG): Phase 01 insight — 84% OCR gap accuracy do LP_detector bbox misalignment, không phải OCR model. Baseline 37.8% exact match → GT bbox 69.8% exact match (+32%). Hướng cải: retrain YOLOv8n trên VNLP 29,837 train images (hiện epoch 2/5, mAP50 99.4%).
+- **PaddleOCR reference**: PP-OCRv5 CPU đạt 50.8% exact match (+13% vs YOLO 37.8%), nhưng throughput chỉ 1.59 img/s (vs 14.7 img/s GPU YOLO). Dùng khi cần accuracy cao hơn, chấp nhận latency.
+- **Vehicle voting**: Majority-based voting fix — track_8 (moto) + track_9 (car) cùng plate 14K117970 giờ consistent. 12 unit tests.
+- **Event dedup**: Server-side deduplicate by (plate_text, direction) trong window (config `APP_EVENT_DEDUP_WINDOW_SEC=30`).
+- **Backend tests**: 95/95 pass. AI engine tests: 45/45 pass. Tổng **140 unit tests**.
 - **FPS**: 1.6-2.1 FPS trên CPU, 14.7 img/s trên GPU GTX 1650.
 
 ### Backend / Dashboard
@@ -90,12 +99,12 @@ cd apps/backend && PYTHONIOENCODING=utf-8 uvicorn app.main:app --port 8000 --rel
 cd apps/dashboard && npm run dev
 
 # Run E2E demo (AI Engine → Backend)
-PYTHONIOENCODING=utf-8 python scripts/run-e2e-demo.py --video data/test-videos/trungdinh22-demo.mp4 --visual --max-frames 100
+PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe scripts/run-e2e-demo.py --video data/test-videos/trungdinh22-demo.mp4 --visual --max-frames 100
 
-# Backend tests (56 tests, ~1.5s)
+# Backend tests (95 tests, ~4s)
 cd apps/backend && PYTHONIOENCODING=utf-8 python -m pytest tests/ -v
 
-# OCR post-processing tests (33 tests, ~2.5s)
+# AI engine tests (45 tests, ~20s, requires .venv)
 cd . && PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe -m pytest apps/ai_engine/tests/ -v
 
 # Full OCR eval on 3,731 images (~4 min GPU)
@@ -105,7 +114,7 @@ PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe scripts/eval-ocr-baseline.py --l
 node reports/2026-04-13/docx/build-report.js
 
 # Rebuild slides
-PYTHONIOENCODING=utf-8 python slides/build-slides.py
+PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe slides/build-slides.py
 ```
 
 ---
@@ -125,13 +134,13 @@ apps/
 │   ├── event_sender.py      # POST to backend
 │   └── config.py            # ENV vars (snapshot, post-process flags)
 ├── backend/app/
-│   ├── main.py              # 18 API endpoints + StaticFiles mount
+│   ├── main.py              # 22 API endpoints + StaticFiles mount
 │   ├── crud.py              # create_event 7 bước atomic
 │   ├── barrier_rules.py     # 6 barrier nhánh
 │   ├── models.py            # 10 DB tables (SQLAlchemy)
 │   └── schemas.py           # Pydantic schemas
-├── backend/tests/           # 56 tests (pytest)
-├── ai_engine/tests/         # 33 tests OCR post-processing
+├── backend/tests/           # 95 tests (pytest)
+├── ai_engine/tests/         # 45 tests (OCR + vehicle voting)
 └── dashboard/src/
     ├── main.tsx             # React app (598 dòng)
     ├── api.ts               # Backend API client

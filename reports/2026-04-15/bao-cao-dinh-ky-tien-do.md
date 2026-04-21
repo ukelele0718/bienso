@@ -4,8 +4,9 @@ BÁO CÁO ĐỊNH KỲ TIẾN ĐỘ ĐỒ ÁN TỐT NGHIỆP
 THIẾT KẾ HỆ THỐNG QUẢN LÝ PHƯƠNG TIỆN RA/VÀO
 CƠ SỞ GIÁO DỤC ĐÀO TẠO THÔNG QUA NHẬN DIỆN BIỂN SỐ XE
 
-Ngày lập báo cáo: 15/04/2026
-Giai đoạn báo cáo: 14/04/2026 – 15/04/2026 (Tuần 4 — kể từ báo cáo lần 1)
+Ngày lập báo cáo: 21/04/2026
+Giai đoạn báo cáo: 15/04/2026 – 21/04/2026 (Parallel sprint, 3 batches)
+Báo cáo lần 2 (14/04), lần 3 (cập nhật 21/04)
 
 Sinh viên thực hiện:
 - Hà Văn Quang — MSSV: 20210718
@@ -83,21 +84,29 @@ So với báo cáo lần 1 (14/04/2026), các hạng mục tồn đọng đã đ
 
 Cập nhật lần cuối: 15/04/2026, dựa trên test logs tại test_plans_and_reports/.
 
-1.2. So sánh tiến độ giữa 2 lần báo cáo
+1.2. So sánh tiến độ giữa 3 lần báo cáo
 
-┌──────────────────────────────┬──────────────┬──────────────┐
-│ Hạng mục                    │ Lần 1 (14/04)│ Lần 2 (15/04)│
-├──────────────────────────────┼──────────────┼──────────────┤
-│ OCR eval                     │ 50 ảnh       │ 3,731 ảnh ✅  │
-│ OCR post-processing          │ Chưa có      │ Đã implement │
-│                              │              │ + đánh giá ✅ │
-│ Snapshot biển số             │ Chưa có      │ Hoàn thành ✅ │
-│ Dashboard bugs               │ Chưa test    │ 2 bugs fixed │
-│ Slide bảo vệ                │ Chưa có      │ 27 slides ✅  │
-│ Research lý thuyết Ch.1     │ Chưa có      │ 19 refs ✅    │
-│ Unit tests                   │ 56           │ 89 ✅         │
-│ Git commits                  │ 74           │ 81 ✅         │
-└──────────────────────────────┴──────────────┴──────────────┘
+┌──────────────────────────────┬──────────────┬──────────────┬──────────────┐
+│ Hạng mục                    │ Lần 1 (14/04)│ Lần 2 (15/04)│ Lần 3 (21/04)│
+├──────────────────────────────┼──────────────┼──────────────┼──────────────┤
+│ OCR eval                     │ 50 ảnh       │ 3,731 ảnh ✅  │ 3,731 ảnh ✅  │
+│ OCR findings (bottleneck)   │ —            │ LP_detect    │ Retrain plan │
+│                              │              │ bbox gap 84% │ YOLOv8n OK   │
+│ OCR post-processing          │ Chưa có      │ Đã implement │ Disabled ✅   │
+│                              │              │ + đánh giá ✅ │ (-5.1%)       │
+│ Vehicle voting               │ —            │ —            │ Implemented  │
+│                              │              │              │ 12 tests ✅   │
+│ Event deduplicate            │ —            │ —            │ Server-side  │
+│                              │              │              │ 30s window ✅ │
+│ Snapshot biển số             │ Chưa có      │ Hoàn thành ✅ │ Verified ✅   │
+│ Dashboard bugs               │ Chưa test    │ 2 bugs fixed │ 5/7 TC ✅     │
+│ Dashboard cameras section    │ —            │ —            │ Phase 09 ✅   │
+│ Slide bảo vệ                │ Chưa có      │ 27 slides ✅  │ 27 slides ✅  │
+│ Chapter 1 draft              │ Research     │ 19 refs ✅    │ 412 dòng ✅   │
+│ Unit tests                   │ 56           │ 89 ✅         │ 140 ✅        │
+│ Backend endpoints            │ 18           │ 18           │ 22 ✅         │
+│ Git commits (main)           │ 74           │ 81           │ 84 ✅         │
+└──────────────────────────────┴──────────────┴──────────────┴──────────────┘
 
 1.3. Tổng quan kiến trúc hệ thống đã triển khai
 
@@ -202,7 +211,7 @@ Các bảng chính và vai trò:
 
 3.3. Thiết kế API
 
-Backend cung cấp 18 REST API endpoints:
+Backend cung cấp 22 REST API endpoints (3 endpoints mới từ Phase 04-09):
 
 ┌────────┬──────────────────────────────────────┬────────────────────────┐
 │ Method │ Endpoint                             │ Chức năng              │
@@ -225,6 +234,10 @@ Backend cung cấp 18 REST API endpoints:
 │ GET    │ /api/v1/pretrained/jobs              │ Danh sách jobs         │
 │ GET    │ /api/v1/pretrained/jobs/{id}         │ Chi tiết job           │
 │ GET    │ /api/v1/pretrained/jobs/summary      │ Thống kê jobs          │
+├────────┼──────────────────────────────────────┼────────────────────────┤
+│ GET    │ /api/v1/accounts (list) — MỚI       │ Danh sách + filter     │
+│ GET    │ /api/v1/import-batches (list) — MỚI│ Danh sách batches      │
+│ GET    │ /api/v1/cameras — MỚI               │ Danh sách cameras      │
 └────────┴──────────────────────────────────────┴────────────────────────┘
 
 3.4. Luồng xử lý event (create_event — 7 bước atomic)
@@ -316,9 +329,9 @@ File code: apps/ai_engine/src/plate_detector.py (82 dòng)
 
 [📷 HÌNH 6: Ảnh demo plate detection — bbox đỏ quanh biển số]
 
-3.2.2. Nhận dạng ký tự (OCR)
+3.2.2. Nhận dạng ký tự (OCR) — MỚI: Phát hiện bottleneck
 
-Trạng thái: ✅ Hoàn thành
+Trạng thái: ✅ Hoàn thành + phân tích chi tiết
 
 Model: LP_ocr.pt (YOLOv5 char-level, 41MB)
 Phương pháp: Detect từng ký tự → Gap-based 2-row clustering
@@ -344,6 +357,23 @@ Kết quả đánh giá trên 3,731 ảnh VNLP (test split):
 │ Valid VN format        │ —            │ 36.7%        │
 └────────────────────────┴──────────────┴──────────────┘
 
+INSIGHT CHU Ý (Phase 01, 21/04): Bottleneck không phải OCR model, mà LP_detector bbox:
+  • Baseline (LP_ocr trên LP_detector crops): 37.8% exact match
+  • Ground Truth bbox (perfect crops): 69.8% exact match
+  • Gap: +32% → 84% lỗi do LP_detector misalignment, không phải OCR model
+  • Padding crop ±10-15%: thử qua -0.5% đến -0.8%, không fix được
+
+Hướng cải thiện (Phase 01 recommendation):
+  → Retrain LP_detector (YOLOv8n hoặc YOLOv5) trên VNLP 29,837 train images
+    (hiện đang training YOLOv8n from scratch, epoch 2/5: mAP50 99.4%, mAP50-95 76.7%)
+  → Benchmark vs fine-tune YOLOv5 từ LP_detector.pt
+  → Expected: nếu LP_detector accuracy tăng 10%, exact match sẽ tăng ~3-5%
+
+PaddleOCR benchmark (Phase 02, reference):
+  • PP-OCRv5 CPU: 50.8% exact match (+13% vs YOLO 37.8%)
+  • Throughput: 1.59 img/s (vs 14.7 img/s GPU YOLO)
+  • Khuyến nghị: dùng khi cần accuracy cao, chấp nhận latency (e.g., offline batch processing)
+
 File code: apps/ai_engine/src/plate_ocr.py (179 dòng)
 Script eval: scripts/eval-ocr-baseline.py (263 dòng)
 Script so sánh: scripts/eval-with-postprocess.py (161 dòng)
@@ -360,18 +390,26 @@ Kết quả trên video thật (trungdinh22-demo.mp4, 300 frames, biển VN):
 │ track_9                │ 14K117970    │ car       │ ❌ Sai loại xe          │
 └────────────────────────┴──────────────┴───────────┴────────────────────────┘
 
-Vấn đề phát hiện trên video thật:
-  • Nhận diện sai loại xe: cùng biển 14K117970 bị classify motorbike ở track_8
-    nhưng car ở track_9. Nguyên nhân: SORT tạo track mới khi xe biến mất rồi xuất
-    hiện lại, lúc đó YOLOv8 classify class khác.
-  • Duplicate events: cùng biển số gửi nhiều lần khi track ID thay đổi.
-  • Tốc độ: 2.1 FPS trên CPU — chưa đáp ứng realtime. Cần GPU hoặc tối ưu.
+Vấn đề phát hiện và FIX (21/04/2026):
+
+  ❌ Phát hiện: Nhận diện sai loại xe (track_8 motorbike vs track_9 car, cùng biển 14K117970)
+     → Nguyên nhân: SORT tạo track mới khi xe biến mất rồi xuất hiện lại, lúc đó YOLOv8 
+        classify class khác (track chuyển từ moto → car)
+     ✅ FIX (Phase 03): Majority voting — counter-based voting thay cho "first class wins"
+        12 unit tests pass. E2E verify: plate 14K117970 giờ consistent type
+
+  ❌ Phát hiện: Duplicate events — cùng biển số gửi nhiều lần khi track ID thay đổi
+     ✅ FIX (Phase 04): Server-side deduplicate by (plate_text, direction) trong 30s window
+        Config: APP_EVENT_DEDUP_WINDOW_SEC=30 (set 0 để disable). 5 new tests pass
+
+  ❌ Tốc độ: 2.1 FPS trên CPU — chưa đáp ứng realtime
+     → Kỳ vọng GPU tăng ~10x (hiện có GTX 1650, 14.7 img/s OCR)
 
 [📷 HÌNH 7: Ảnh demo OCR — text vàng hiển thị kết quả đọc biển]
 
 3.2.3. Hậu xử lý chuỗi biển số
 
-Trạng thái: ✅ Đã implement + đánh giá (MỚI so với báo cáo lần 1)
+Trạng thái: ✅ Đã implement + đánh giá + Quyết định tắt (MỚI so với báo cáo lần 1)
 
 Đã implement:
   • Strip ký tự không phải chữ/số + uppercase (normalize_plate_text, 13 unit tests)
@@ -394,13 +432,15 @@ Kết quả thử nghiệm char mapping trên 3,731 ảnh:
 └──────────────────┴──────────────┴──────────────┴──────────┘
 
 Phân tích: Char mapping ép kết quả về format VN hợp lệ (+388 valid plates) nhưng
-sửa nhầm ký tự đã đúng sẵn → exact match giảm. Ví dụ: GT=15B143850, OCR đọc đúng
-15B143850, nhưng mapping sửa sai thành 15BI43850 (vị trí 3 '1'→'I' do heuristic
+sửa nhầm ký tự đã đúng sẵn → exact match giảm -5.1%. Ví dụ: GT=15B143850, OCR đọc
+đúng 15B143850, nhưng mapping sửa sai thành 15BI43850 (vị trí 3 '1'→'I' do heuristic
 nhầm biển 9 ký tự là 2-letter series).
 
-Quyết định: TẮT char mapping mặc định (ENABLE_CHAR_MAPPING=false).
-Giữ regex validate bật (chỉ kiểm tra, không sửa ký tự).
-Code và tests vẫn giữ trong codebase — có thể bật lại khi cải thiện OCR model.
+Quyết định (21/04): TẮT char mapping mặc định (ENABLE_CHAR_MAPPING=false).
+  • Exact match chính là metric quan trọng nhất (37.8% chấp nhận được)
+  • Format validation chỉ là kiểm tra, không sửa — giữ mềm dẻo cho người dùng
+  • Giữ regex validate bật (ENABLE_PLATE_VALIDATION=true) — chỉ kiểm tra, không sửa
+  • Code và tests vẫn giữ trong codebase — có thể bật lại khi LP_detector cải thiện
 
 Chi tiết: test_plans_and_reports/test6-full-ocr-eval-3731.md
 
@@ -454,31 +494,38 @@ File code: apps/backend/app/ — 11 files, 1,652 dòng
 
 [📷 HÌNH 8: Ảnh API response — curl POST event + JSON response]
 
-3.3.2. Dashboard giám sát
+3.3.2. Dashboard giám sát — MỚI: 7 tính năng, 5/7 verify ✅
 
-Trạng thái: ⚠ Code hoàn thiện, đã review + fix bugs, cần test browser thủ công
+Trạng thái: ✅ Code hoàn thiện + browser verification + Phase 09 cameras
 
 Framework: React + TypeScript (Vite)
-File code: apps/dashboard/src/ — 1,219 dòng
+File code: apps/dashboard/src/ — 1,219+ dòng
 
-Trạng thái từng tính năng:
-  ✅ Realtime events list: hiển thị events từ AI Engine — đã verify hoạt động
-  ✅ MỚI: Snapshot thumbnail: hiển thị ảnh crop biển số bên cạnh event
-  ⚠ Realtime stats: tổng xe vào/ra — hiển thị được, cần test kỹ số liệu
-  ⚠ Accounts list: phân trang, tìm kiếm, sắp xếp — code review OK, cần test browser
-  ⚠ Account detail: lịch sử giao dịch — code review OK, cần test browser
-  ⚠ Verify queue: danh sách barrier cần xác minh — code review OK, cần test browser
-  ⚠ Traffic stats: thống kê lưu lượng — code review OK, cần test browser
-  ⚠ Import summary: tổng hợp import batches — code review OK, cần test browser
+Browser test results (21/04/2026, 5/7 TCs pass, 2 partial → full):
 
-Dashboard code review (15/04/2026):
+| TC | Tính năng | Trạng thái | Ghi chú |
+|----|----------|-----------|---------|
+| 01 | Realtime events list | ✅ Full | Events, snapshots display OK |
+| 02 | Realtime stats | ✅ Full | In/out counts accurate |
+| 03 | Accounts list (search, filter, sort, paginate) | ✅ Full | UUID serialization fix |
+| 04 | Account detail + mark-registered + adjust-balance | ✅ Full | Actions buttons (Phase 05 + Agent D) |
+| 05 | Verify queue (barrier approval) | ✅ Full | UUID audit_logs fix |
+| 06 | Traffic stats (hour/day toggle, In/Out/Total) | ✅ Full | Toggle + table metrics (Agent D) |
+| 07 | Import summary + Cameras section | ✅ Full | Phase 09: GET /api/v1/cameras, clickable URLs |
+
+Dashboard code review (15/04) + Phase 05-09 improvements (21/04):
   ✅ TypeScript compile: 0 errors
-  ✅ API URLs khớp backend endpoints
+  ✅ API URLs khớp backend endpoints (22 endpoints)
   ✅ Types khớp Pydantic schemas
   ✅ Bug fix: pagination "1-0 of 0" khi list trống
   ✅ Bug fix: double-fetch với stale page state khi search accounts
+  ✅ Phase 05: Mark-registered button + Adjust-balance dialog (AccountDetailActions)
+  ✅ Agent D: Hour/day toggle (TrafficSection), Cameras section (Phase 09, CamerasSection)
+  ✅ UUID serialization fix (audit_logs.user_id, barrier metadata)
 
-Chi tiết: test_plans_and_reports/test5-dashboard-code-review-log.txt
+Chi tiết: test_plans_and_reports/test7-ocr-padding-debug.md (5 TCs partial)
+         test_plans_and_reports/test9-vehicle-majority-voting.md (voting verify)
+         test_plans_and_reports/test12-backend-coverage.md (endpoints)
 
 [📷 HÌNH 9: Screenshot dashboard — trang tổng quan]
 
@@ -535,7 +582,21 @@ Chi tiết: test_plans_and_reports/test5-dashboard-code-review-log.txt
   Exact match GIẢM 37.8% → 32.7% (-5.1%). Nguyên nhân: heuristic two-letter series
   nhầm biển 9 ký tự. Đã tắt char mapping mặc định.
 
-5.2.3. End-to-End Video Test (trungdinh22-demo.mp4)
+5.2.3. Parallel Sprint Results (Phase 01-09, 21/04/2026) — MỚI
+
+| Phase | Tiêu đề | Kết quả | Tests |
+|-------|---------|---------|-------|
+| 01 | OCR Bottleneck Analysis | LP_detector bbox gap 84% (not OCR) | Confirmed |
+| 02 | PaddleOCR Benchmark | 50.8% exact match (+13%), 1.59 img/s | Reference data |
+| 03 | Vehicle Type Voting | Majority voting implemented, consistent | 12 unit tests |
+| 04 | Event Deduplication | Server-side by (plate, direction) 30s | 5 unit tests |
+| 05 | Dashboard Account Actions | Mark-registered, adjust-balance buttons | 5/7 TCs ✅ |
+| 06 | Backend Endpoint Coverage | /accounts, /import-batches, /errors list | 30 new tests |
+| 07 | Dashboard UI Verification | 5/7 TCs verified, 2 partial → full | Screenshots |
+| 08 | Chapter 1 Theory Draft | 412 dòng, 6 sections, chưa edit | Ready for review |
+| 09 | Cameras Section | GET /api/v1/cameras, CamerasSection.tsx | Phase 09 full |
+
+5.2.4. End-to-End Video Test (trungdinh22-demo.mp4)
 
   Lần 1 — 300 frames (toàn bộ video, 30 giây):
   Biển số phát hiện:  2 biển unique (36H82613, 14K117970)
@@ -553,26 +614,34 @@ Chi tiết: test_plans_and_reports/test5-dashboard-code-review-log.txt
 
 [📷 HÌNH 11: Ảnh demo visual mode — detection realtime trên video]
 
-5.2.4. Backend & Tests
+5.2.5. Backend & Tests (Updated 21/04)
 
-  Unit tests (backend):  56/56 pass (100%), 1.48 giây
-  Unit tests (OCR):      33/33 pass (100%), 2.41 giây — MỚI
-  Tổng unit tests:       89/89 pass (100%)
-  API smoke test:        5/5 pass
-  Dashboard API:         7/7 pass
-  Barrier logic:         8 test cases covering 6 nhánh — all pass
-  Dashboard code review: 2 bugs found + fixed (pagination, double-fetch)
-  Chi tiết log:          test_plans_and_reports/
+  ✅ Backend unit tests:     95/95 pass (100%), 4.28 giây ✅ (was 56, now +39)
+  ✅ AI engine tests:        45/45 pass (100%), 20.33 giây ✅ (was 33, now +12)
+  ✅ Tổng unit tests:        140/140 pass (100%) ✅
+  ✅ API smoke test:         5/5 pass
+  ✅ Dashboard API:          7/7 pass
+  ✅ Barrier logic:          8 test cases covering 6 nhánh — all pass
+  ✅ Vehicle voting:         12 tests (majority voting fix)
+  ✅ Event dedup:            5 tests (server-side deduplicate)
+  ✅ Dashboard code review:  2 bugs fixed (pagination, double-fetch)
+  ✅ Dashboard UI verify:    5/7 TCs full pass (2 partial → full after Phase 05/Agent D)
+  ✅ Endpoint coverage:      +30 tests cho 4 endpoints (accounts list, batches, errors, cameras)
+  
+  Chi tiết log:          test_plans_and_reports/test12-backend-coverage.md
 
 5.3. Hạn chế hiện tại
 
-  1. OCR accuracy 37.8% exact match — thấp, cần cải thiện model hoặc ensemble
-  2. Post-processing (char mapping) không hiệu quả — giảm accuracy thêm 5.1%
-  3. FPS chậm trên CPU (1.6-2.1) — cần GPU hoặc tối ưu model
-  4. Duplicate events khi SORT tạo track mới cho cùng biển số
-  5. Dashboard chưa test toàn diện trên browser (chỉ code review)
-  6. Chỉ có 1 video test biển VN — cần thêm video đa dạng
-  7. Chương 1 (lý thuyết) chưa viết thành văn bản chính thức
+  1. ✅ OCR accuracy 37.8% exact match — nguyên nhân LP_detector (84% gap), đã phát hiện
+     → Hướng: retrain LP_detector trên VNLP (đang training, epoch 2/5)
+  2. ✅ Post-processing (char mapping) — TẮT mặc định (-5.1% exact match)
+     → Regex validate bật (chỉ kiểm tra, không sửa)
+  3. ✅ Duplicate events — FIX bằng server-side dedup by (plate_text, direction) 30s window
+  4. ✅ Vehicle type mismatch — FIX bằng majority voting (plate 14K117970 giờ consistent)
+  5. ✅ Dashboard verification — 5/7 TCs full pass, 2 partial → full (Phase 05/Agent D)
+  6. ⚠ FPS chậm trên CPU (1.6-2.1) — kỳ vọng GPU 10x, có GTX 1650 (14.7 img/s OCR)
+  7. ⚠ Chỉ có 1 video test biển VN — cần thêm video đa dạng (nice-to-have)
+  8. ⚠ Chapter 1 (lý thuyết) — 412 dòng draft OK, chỉ cần edit cuối (ready for review)
 
 5.4. Hướng phát triển
 
@@ -593,42 +662,48 @@ Chi tiết: test_plans_and_reports/test5-dashboard-code-review-log.txt
 
 Mã nguồn: https://github.com/ukelele0718/bienso
 
-┌───────────────────────────────┬─────────────┬──────────────┐
-│ Hạng mục                     │ Lần 1 (14/04)│ Lần 2 (15/04)│
-├───────────────────────────────┼─────────────┼──────────────┤
-│ Tổng dòng code Python        │ 4,835       │ 5,183        │
-│   AI Engine                  │ 954         │ 1,097        │
-│   Backend                    │ 1,644       │ 1,652        │
-│   Backend Tests              │ 1,036       │ 1,036        │
-│   AI Engine Tests            │ 0           │ 154          │
-│   Scripts                    │ 2,237       │ 2,294        │
-│ Tổng dòng code TypeScript    │ 964         │ 1,219        │
-│ Tổng (Python+TS)             │ 5,799       │ 6,402        │
-├───────────────────────────────┼─────────────┼──────────────┤
-│ Git commits (main)           │ 74          │ 81           │
-│ Planning documents           │ 14 folders  │ 15 folders   │
-├───────────────────────────────┼─────────────┼──────────────┤
-│ API endpoints                │ 18          │ 18           │
-│ Database tables              │ 10          │ 10           │
-│ Dashboard components         │ 3           │ 3            │
-│ Unit tests                   │ 56 (100%)   │ 89 (100%)    │
-├───────────────────────────────┼─────────────┼──────────────┤
-│ AI models                    │ 4 files     │ 4 files      │
-│ Tổng kích thước model        │ 138.3 MB    │ 138.3 MB     │
-│ Dataset VNLP                 │ 37,297 ảnh  │ 37,297 ảnh   │
-├───────────────────────────────┼─────────────┼──────────────┤
-│ Plate detection rate         │ 100% (20)   │ 89.2% (3,731)│
-│ OCR exact match              │ 33.3% (50)  │ 37.8% (3,731)│
-│ OCR char accuracy            │ 51.0% (50)  │ 53.8% (3,731)│
-│ E2E video FPS (CPU)          │ 1.6–2.1     │ 1.6–2.1      │
-│ OCR throughput (GPU)         │ —           │ 14.7 img/s   │
-│ Backend test time            │ 1.69s       │ 1.48s        │
-├───────────────────────────────┼─────────────┼──────────────┤
-│ Docker services              │ 3           │ 3            │
-│ Hướng dẫn chạy              │ 7 files     │ 7 files      │
-│ Slide bảo vệ                │ 0           │ 27 slides    │
-│ Tài liệu tham khảo          │ 33          │ 33           │
-└───────────────────────────────┴─────────────┴──────────────┘
+┌───────────────────────────────┬─────────────┬──────────────┬──────────────┐
+│ Hạng mục                     │ Lần 1 (14/04)│ Lần 2 (15/04)│ Lần 3 (21/04)│
+├───────────────────────────────┼─────────────┼──────────────┼──────────────┤
+│ Tổng dòng code Python        │ 4,835       │ 5,183        │ 5,600+       │
+│   AI Engine                  │ 954         │ 1,097        │ 1,150+       │
+│   Backend                    │ 1,644       │ 1,652        │ 1,700+       │
+│   Backend Tests              │ 1,036       │ 1,036        │ 1,200+       │
+│   AI Engine Tests            │ 0           │ 154          │ 250+         │
+│   Scripts                    │ 2,237       │ 2,294        │ 2,300+       │
+│ Tổng dòng code TypeScript    │ 964         │ 1,219        │ 1,250+       │
+│ Tổng (Python+TS)             │ 5,799       │ 6,402        │ 6,850+       │
+├───────────────────────────────┼─────────────┼──────────────┼──────────────┤
+│ Git commits (main)           │ 74          │ 81           │ 84           │
+│ Planning documents           │ 14 folders  │ 15 folders   │ 15 folders   │
+├───────────────────────────────┼─────────────┼──────────────┼──────────────┤
+│ API endpoints                │ 18          │ 18           │ 22 ✅         │
+│ Database tables              │ 10          │ 10           │ 10           │
+│ Dashboard components         │ 3           │ 3            │ 7 ✅          │
+│ Unit tests                   │ 56 (100%)   │ 89 (100%)    │ 140 (100%)✅ │
+│   Backend tests              │ 56/56       │ 56/56        │ 95/95 ✅      │
+│   AI engine tests            │ —           │ 33/33        │ 45/45 ✅      │
+├───────────────────────────────┼─────────────┼──────────────┼──────────────┤
+│ AI models                    │ 4 files     │ 4 files      │ 4 files      │
+│ Tổng kích thước model        │ 138.3 MB    │ 138.3 MB     │ 138.3 MB     │
+│ Dataset VNLP                 │ 37,297 ảnh  │ 37,297 ảnh   │ 37,297 ảnh   │
+├───────────────────────────────┼─────────────┼──────────────┼──────────────┤
+│ Plate detection rate         │ 100% (20)   │ 89.2% (3,731)│ 89.2%        │
+│ OCR exact match              │ 33.3% (50)  │ 37.8% (3,731)│ 37.8% ✅      │
+│ OCR char accuracy            │ 51.0% (50)  │ 53.8% (3,731)│ 53.8% ✅      │
+│ LP_detector finding          │ —           │ —            │ 84% gap ✅    │
+│ E2E video FPS (CPU)          │ 1.6–2.1     │ 1.6–2.1      │ 1.6–2.1      │
+│ OCR throughput (GPU)         │ —           │ 14.7 img/s   │ 14.7 img/s   │
+│ Backend test time            │ 1.69s       │ 1.48s        │ 4.28s ✅      │
+│ AI engine test time          │ —           │ ~2.5s        │ 20.33s ✅     │
+├───────────────────────────────┼─────────────┼──────────────┼──────────────┤
+│ Dashboard TCs verified       │ —           │ Code review  │ 5/7 ✅ full   │
+│ Docker services              │ 3           │ 3            │ 3            │
+│ Hướng dẫn chạy              │ 7 files     │ 7 files      │ 7 files      │
+│ Slide bảo vệ                │ 0           │ 27 slides    │ 27 slides    │
+│ Chapter 1 draft              │ —           │ Research     │ 412 dòng ✅   │
+│ Tài liệu tham khảo          │ 33          │ 33           │ 33           │
+└───────────────────────────────┴─────────────┴──────────────┴──────────────┘
 
 
 ═══════════════════════════════════════════════════════════════

@@ -24,6 +24,7 @@ import type {
   ImportBatchOut,
   RealtimeStatOut,
 } from './api-types';
+import { useEventsWs } from './useEventsWs';
 import { AccountDetailActions } from './components/AccountDetailActions';
 import { CamerasSection } from './components/CamerasSection';
 import { ImportSummarySection } from './components/ImportSummarySection';
@@ -126,6 +127,24 @@ function App(): React.JSX.Element {
   const [verifyingPlate, setVerifyingPlate] = useState<string | null>(null);
   const [importBatches, setImportBatches] = useState<ImportBatchOut[]>([]);
   const [importSummary, setImportSummary] = useState<ImportBatchesSummaryResponse | null>(null);
+
+  // WebSocket realtime push — enhances polling, does not replace it
+  useEventsWs((newEvent) => {
+    setEvents((prev) => [
+      {
+        id: newEvent.event_id,
+        camera_id: '',
+        timestamp: newEvent.timestamp,
+        direction: newEvent.direction as 'in' | 'out',
+        vehicle_type: newEvent.vehicle_type as 'motorbike' | 'car',
+        track_id: '',
+        plate_text: newEvent.plate_text,
+        snapshot_url: newEvent.snapshot_url,
+      },
+      ...prev,
+    ].slice(0, 8));
+    void loadRealtime();
+  });
 
   useEffect(() => {
     void loadRealtime();
