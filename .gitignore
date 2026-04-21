@@ -21,6 +21,7 @@ guide/
 plans/
 assets/
 *.zip
+snapshots/
 
 # OS
 .DS_Store
@@ -41,7 +42,7 @@ models/
 # Large generated files
 reports/2026-04-13/docx/bao-cao.docx
 data/test-videos/trungdinh22-demo.gif
-
+not_tam_do_quen.md
 # Local review workspace
 project_review/
 .agent-skills-ref/
