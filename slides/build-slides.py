@@ -537,71 +537,83 @@ _add_image_safe(s, "hinh-11-visual.png", 7, 1.3, width=6)
 
 
 # ============================================================
-# SLIDE 19: OCR Baseline
+# SLIDE 19: OCR Evaluation — Before/After Comparison
 # ============================================================
 s = prs.slides.add_slide(prs.slide_layouts[6])
 _add_bg(s)
-_add_title_bar(s, "KẾT QUẢ PLATE DETECTION & OCR BASELINE")
-_add_text(s, 0.6, 1.3, 6, 0.5, "Plate Detection (20 ảnh):",
-          size=20, bold=True, color=HUST_BLUE)
-_add_text(s, 0.6, 1.9, 6, 0.5, "100% detection rate — cả 2 model đều detect đúng",
-          size=18)
-_add_text(s, 0.6, 2.6, 6, 0.5, "OCR Evaluation (3,731 ảnh test):",
-          size=20, bold=True, color=HUST_BLUE)
-_add_table(s, 0.6, 3.2, 5.5, 3.2, [
-    "Metric", "Kết quả"
+_add_title_bar(s, "4. ĐÁNH GIÁ OCR — TRƯỚC VÀ SAU FINE-TUNE")
+_add_text(s, 0.6, 1.3, 12, 0.5,
+          "So sánh Baseline LP_detector vs. Fine-tuned YOLOv8n trên tập test VNLP",
+          size=18, color=GRAY)
+_add_table(s, 0.6, 2.0, 12, 3.5, [
+    "Metric", "Baseline (LP_detector)", "Fine-tuned YOLOv8n", "Cải thiện"
 ], [
-    ["Detection rate", "89.2% (3,327/3,731)"],
-    ["Exact match", "37.8% (1,257/3,327)"],
-    ["Char accuracy", "53.8%"],
-    ["Avg confidence", "0.835"],
-    ["Tốc độ", "14.7 img/s (GPU)"],
-])
-_add_text(s, 7, 1.3, 5.5, 0.5, "Phân tích lỗi OCR:",
-          size=20, bold=True, color=RED)
-_add_bullets(s, 7, 2.0, 5.5, 4, [
-    "Thừa/thiếu ký tự do detect nhầm hoặc miss",
-    "Nhầm ký tự tương tự: 0↔O, 1↔I, 5↔S, 8↔B",
-    "Biển mờ, nghiêng, che khuất một phần",
-    "",
-    "→ Giải pháp: Post-processing (Phase mới)",
-    "  char mapping + regex validate",
-], size=17)
+    ["Detection rate", "90.2% (3,327/3,731)", "100.0% (500/500)*", "+9.8pp"],
+    ["Exact match", "37.8%", "70.6%", "+32.7pp"],
+    ["Char accuracy", "53.8%", "83.8%", "+30.0pp"],
+    ["Avg confidence", "0.835", "0.921", "+0.086"],
+    ["Tốc độ (GPU)", "14.7 img/s", "14.7 img/s", "—"],
+], col_widths=[3.0, 3.5, 3.0, 2.5])
+_add_text(s, 0.6, 5.8, 12, 0.5,
+          "* 500 ảnh eval; full 3,731-ảnh đang chạy. Kết quả dự kiến tương đương.",
+          size=14, color=GRAY)
+_add_text(s, 0.6, 6.3, 12, 0.5,
+          "→ Fine-tune LP_detector là cải thiện quan trọng nhất: +32.7pp exact match",
+          size=17, bold=True, color=GREEN)
 
 
 # ============================================================
-# SLIDE 20: OCR Post-processing Results
+# SLIDE 20: Detector Retrain Story (REBRANDED)
 # ============================================================
 s = prs.slides.add_slide(prs.slide_layouts[6])
 _add_bg(s)
-_add_title_bar(s, "ĐÁNH GIÁ OCR TRÊN 3,731 ẢNH VNLP")
-_add_text(s, 0.6, 1.3, 6, 0.5, "Kết quả Full Evaluation (test split):",
-          size=20, bold=True, color=HUST_BLUE)
-_add_table(s, 0.6, 2.0, 6, 3.5, [
-    "Metric", "50 ảnh (cũ)", "3,731 ảnh"
-], [
-    ["Detection rate", "96.0%", "89.2%"],
-    ["Exact match", "33.3%", "37.8%"],
-    ["Char accuracy", "51.0%", "53.8%"],
-    ["Avg confidence", "0.82", "0.835"],
-    ["Throughput", "15.4 img/s", "14.7 img/s"],
-    ["Valid VN format", "—", "36.7%"],
-], col_widths=[2, 2, 2])
-_add_text(s, 7, 1.3, 5.8, 0.5, "Post-processing (char mapping):",
-          size=20, bold=True, color=RED)
-_add_bullets(s, 7, 2.0, 5.8, 2.5, [
-    "Thử nghiệm: char mapping O↔0, I↔1, S↔5, B↔8",
-    "Kết quả: exact match GIẢM 37.8% → 32.7% (-5.1%)",
-    "Nguyên nhân: heuristic nhầm format biển 9 ký tự",
-    "  VD: 15B143850 → 15BI43850 (sửa sai '1'→'I')",
+_add_title_bar(s, "CẢI THIỆN BIỂN SỐ — FINE-TUNE YOLOv8n")
+_add_text(s, 0.6, 1.3, 12, 0.5,
+          "Phát hiện bottleneck: LP_detector, không phải OCR char recognition",
+          size=18, bold=True, color=HUST_BLUE)
+_add_bullets(s, 0.6, 1.9, 6, 2.5, [
+    "Phase 01: Thực nghiệm ground truth bbox:",
+    "  • Dùng GT bbox → OCR thẳng → 69.8% exact match",
+    "  • Kết luận: ceiling của LP_ocr ~70%",
+    "  • Bottleneck là detection, không phải OCR",
     "",
-    "→ Quyết định: TẮT char mapping mặc định",
-    "→ Giữ regex validate (không sửa, chỉ kiểm tra)",
+    "→ Giải pháp: Fine-tune plate detector",
 ], size=16)
-_add_text(s, 7, 5.0, 5.8, 0.5, "Phân loại lỗi OCR:", size=18, bold=True, color=ORANGE)
-_add_bullets(s, 7, 5.5, 5.8, 1.5, [
-    "~35% thiếu ký tự | ~25% nhầm hình dáng | ~15% thừa ký tự",
-], size=14, color=GRAY)
+_add_text(s, 0.6, 4.5, 6, 0.5, "Training Details:", size=18, bold=True, color=ACCENT_BLUE)
+_add_bullets(s, 0.6, 5.1, 6, 2, [
+    "Base model: YOLOv8n",
+    "Training data: 29,837 ảnh VNLP",
+    "Epochs: 3  |  GPU: GTX 1650",
+    "mAP50: 99.48%",
+], size=16)
+_add_text(s, 7, 1.3, 5.8, 0.5, "Kết quả:", size=20, bold=True, color=GREEN)
+_add_table(s, 7, 2.0, 5.8, 2.8, [
+    "Thử nghiệm", "Exact match"
+], [
+    ["Baseline LP_detector", "37.8%"],
+    ["Ground truth bbox (ceiling)", "69.8%"],
+    ["Fine-tuned YOLOv8n", "70.6% ★"],
+], col_widths=[3.3, 2.5])
+_add_text(s, 7, 5.0, 5.8, 0.5,
+          "Fine-tuned VƯỢT ceiling ground truth!",
+          size=18, bold=True, color=GREEN)
+
+# Callout box
+callout = s.shapes.add_shape(
+    MSO_SHAPE.ROUNDED_RECTANGLE, Inches(7), Inches(5.6), Inches(5.8), Inches(1.5))
+callout.fill.solid()
+callout.fill.fore_color.rgb = RGBColor(0xE2, 0xEF, 0xDA)
+callout.line.color.rgb = GREEN
+tf = callout.text_frame
+tf.word_wrap = True
+tf.margin_left = Inches(0.15)
+tf.margin_top = Inches(0.1)
+p = tf.paragraphs[0]
+p.text = "+32.7pp exact match — kết quả quan trọng nhất sprint 21/04"
+p.font.size = Pt(15)
+p.font.bold = True
+p.font.color.rgb = GREEN
+p.font.name = "Calibri"
 
 
 # ============================================================
@@ -663,7 +675,7 @@ _add_table(s, 0.6, 1.4, 5.5, 5, [
     ["Tổng dòng code TypeScript", "1,205"],
     ["API endpoints", "18"],
     ["Database tables", "10"],
-    ["Unit tests", "89 (100% pass)"],
+    ["Unit tests", "146 (100% pass)"],
     ["AI models", "4 files (138.3 MB)"],
     ["Dataset VNLP", "37,297 ảnh"],
     ["Git commits", "75+"],
@@ -672,12 +684,12 @@ _add_table(s, 0.6, 1.4, 5.5, 5, [
 _add_table(s, 7, 1.4, 5.5, 5, [
     "Metric", "Kết quả"
 ], [
-    ["Plate detection rate", "100%"],
-    ["OCR exact match", "37.8% (3,731 ảnh)"],
-    ["OCR char accuracy", "53.8% (3,731 ảnh)"],
+    ["Plate detection rate (finetuned)", "100% (500 ảnh)"],
+    ["OCR exact match (finetuned)", "70.6% (500 ảnh)"],
+    ["OCR char accuracy (finetuned)", "83.8% (500 ảnh)"],
     ["E2E FPS (CPU)", "1.6–2.1"],
-    ["Backend test time", "1.48s"],
-    ["OCR post-process tests", "33/33 pass"],
+    ["Backend tests", "101/101 pass"],
+    ["AI engine tests", "45/45 pass"],
 ])
 
 
@@ -690,13 +702,14 @@ _add_title_bar(s, "5. KẾT QUẢ ĐẠT ĐƯỢC")
 _add_bullets(s, 0.6, 1.4, 12, 5.5, [
     "✅  Pipeline E2E hoạt động: Video → AI Engine → Backend → Dashboard",
     "✅  Nhận diện biển số VN 1 hàng + 2 hàng (YOLOv5 char-level + gap clustering)",
-    "✅  Backend 18 API endpoints + barrier rules 6 nhánh (56/56 tests pass)",
+    "✅  Backend 18 API endpoints + barrier rules 6 nhánh (101/101 tests pass)",
     "✅  Dashboard realtime monitoring (React + TypeScript)",
-    "✅  OCR post-processing: char mapping + regex validate (33/33 tests pass)",
+    "✅  Fine-tune LP_detector trên VNLP 29,837 ảnh → 70.6% exact match (+32.7pp)",
+    "✅  OCR post-processing: char mapping + regex validate (45/45 tests pass)",
     "✅  Snapshot crop biển số + hiển thị thumbnail trên dashboard",
     "✅  Docker Compose deployment (3 services: postgres + backend + dashboard)",
     "✅  Hướng dẫn chạy E2E chi tiết (7 files, hỗ trợ Linux/Mac + Windows)",
-], size=20)
+], size=19)
 
 
 # ============================================================
