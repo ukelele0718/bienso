@@ -33,6 +33,12 @@ OCR_ROW_GAP_RATIO = float(os.getenv("AI_OCR_ROW_GAP", "0.30"))
 ENABLE_CHAR_MAPPING = os.environ.get("ENABLE_CHAR_MAPPING", "false").lower() == "true"
 ENABLE_PLATE_VALIDATION = os.environ.get("ENABLE_PLATE_VALIDATION", "true").lower() == "true"
 
+# ── OCR backend ──────────────────────────────────────────────
+# "yolo"   — LP_ocr.pt char-level detection (default, fast ~1.5 img/s)
+# "paddle" — PaddleOCR PP-OCRv5 (more accurate, ~1.0 img/s CPU)
+# Override via: OCR_BACKEND=paddle
+OCR_BACKEND = os.environ.get("OCR_BACKEND", "yolo").lower()
+
 # ── Snapshot saving ──────────────────────────────────────────
 SNAPSHOT_DIR = os.environ.get("SNAPSHOT_DIR", "snapshots")
 SNAPSHOT_PADDING = float(os.environ.get("SNAPSHOT_PADDING", "0.15"))

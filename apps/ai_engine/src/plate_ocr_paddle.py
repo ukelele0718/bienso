@@ -116,6 +116,18 @@ class PlateOCRPaddle:
         combined = "".join(texts).upper()
         combined = re.sub(r"[^A-Z0-9]", "", combined)
 
+        if not combined:
+            return None, 0.0
+
+        # Length guard: VN plates are 7-9 chars. Longer results indicate
+        # PaddleOCR hallucinated adjacent text (vehicle branding, frame markings).
+        if len(combined) > 9 or len(combined) < 7:
+            match = re.search(r"[A-Z0-9]{7,9}", combined)
+            if match:
+                combined = match.group(0)
+            else:
+                return None, 0.0
+
         avg_conf = sum(scores) / len(scores) if scores else 0.0
 
-        return (combined if combined else None), avg_conf
+        return combined, avg_conf

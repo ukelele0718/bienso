@@ -22,6 +22,9 @@ from .plate_ocr import PlateOCR, apply_char_mapping, validate_vn_plate_format
 from .sort_tracker import Sort
 from .vehicle_detector import VehicleDetector
 
+# PaddleOCR import is deferred to Pipeline.__init__ to control DLL load order
+# (torch must be loaded first on Windows).
+
 log = logging.getLogger(__name__)
 
 Direction = Literal["in", "out"]
@@ -97,7 +100,15 @@ class Pipeline:
     def __init__(self) -> None:
         self.vehicle_detector = VehicleDetector()
         self.plate_detector = PlateDetector()
-        self.plate_ocr = PlateOCR()
+
+        if config.OCR_BACKEND == "paddle":
+            # torch is already imported by VehicleDetector/PlateDetector (ultralytics)
+            # so DLL load order is satisfied before PaddleOCR init.
+            from .plate_ocr_paddle import PlateOCRPaddle  # noqa: PLC0415
+            self.plate_ocr = PlateOCRPaddle(use_gpu=False)  # CPU for stability
+        else:
+            self.plate_ocr = PlateOCR()
+
         self.tracker = Sort(
             max_age=config.TRACKER_MAX_AGE,
             min_hits=config.TRACKER_MIN_HITS,

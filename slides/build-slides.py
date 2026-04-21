@@ -543,22 +543,22 @@ s = prs.slides.add_slide(prs.slide_layouts[6])
 _add_bg(s)
 _add_title_bar(s, "4. ĐÁNH GIÁ OCR — TRƯỚC VÀ SAU FINE-TUNE")
 _add_text(s, 0.6, 1.3, 12, 0.5,
-          "So sánh Baseline LP_detector vs. Fine-tuned YOLOv8n trên tập test VNLP",
+          "3 configs so sánh: Baseline → Fine-tuned detector → + PaddleOCR",
           size=18, color=GRAY)
 _add_table(s, 0.6, 2.0, 12, 3.5, [
-    "Metric", "Baseline (LP_detector)", "Fine-tuned YOLOv8n", "Cải thiện"
+    "Metric", "Baseline", "Finetuned v8n + YOLO", "+ PaddleOCR"
 ], [
-    ["Detection rate", "90.2% (3,327/3,731)", "100.0% (500/500)*", "+9.8pp"],
-    ["Exact match", "37.8%", "70.6%", "+32.7pp"],
-    ["Char accuracy", "53.8%", "83.8%", "+30.0pp"],
-    ["Avg confidence", "0.835", "0.921", "+0.086"],
-    ["Tốc độ (GPU)", "14.7 img/s", "14.7 img/s", "—"],
-], col_widths=[3.0, 3.5, 3.0, 2.5])
+    ["Detection rate", "89.2%", "99.9%", "99.9%"],
+    ["Exact match", "37.8%", "68.7%", "92.0% ★★"],
+    ["Char accuracy", "53.8%", "82.4%", "96.5%"],
+    ["Test size", "3,731", "3,731", "500*"],
+    ["Throughput", "14.7 img/s GPU", "17.9 img/s GPU", "1.13 img/s CPU"],
+], col_widths=[2.5, 2.5, 3.5, 3.5])
 _add_text(s, 0.6, 5.8, 12, 0.5,
-          "* 500 ảnh eval; full 3,731-ảnh đang chạy. Kết quả dự kiến tương đương.",
+          "* PaddleOCR eval trên 500 ảnh; full 3,731 đang chạy (kỳ vọng ~90%)",
           size=14, color=GRAY)
 _add_text(s, 0.6, 6.3, 12, 0.5,
-          "→ Fine-tune LP_detector là cải thiện quan trọng nhất: +32.7pp exact match",
+          "→ Cải thiện +54.2pp: Baseline 37.8% → Finetuned+PaddleOCR 92.0%",
           size=17, bold=True, color=GREEN)
 
 
@@ -590,12 +590,13 @@ _add_text(s, 7, 1.3, 5.8, 0.5, "Kết quả:", size=20, bold=True, color=GREEN)
 _add_table(s, 7, 2.0, 5.8, 2.8, [
     "Thử nghiệm", "Exact match"
 ], [
-    ["Baseline LP_detector", "37.8%"],
+    ["Baseline LP_detector + YOLO", "37.8%"],
     ["Ground truth bbox (ceiling)", "69.8%"],
-    ["Fine-tuned YOLOv8n", "70.6% ★"],
+    ["Finetuned YOLOv8n + YOLO char", "68.7%"],
+    ["Finetuned + PaddleOCR ★", "92.0%"],
 ], col_widths=[3.3, 2.5])
 _add_text(s, 7, 5.0, 5.8, 0.5,
-          "Fine-tuned VƯỢT ceiling ground truth!",
+          "Finetuned + PaddleOCR vượt xa ceiling GT!",
           size=18, bold=True, color=GREEN)
 
 # Callout box
@@ -685,8 +686,8 @@ _add_table(s, 7, 1.4, 5.5, 5, [
     "Metric", "Kết quả"
 ], [
     ["Plate detection rate (finetuned)", "100% (500 ảnh)"],
-    ["OCR exact match (finetuned)", "70.6% (500 ảnh)"],
-    ["OCR char accuracy (finetuned)", "83.8% (500 ảnh)"],
+    ["OCR exact match (best)", "92.0% PaddleOCR"],
+    ["OCR char accuracy (best)", "96.5%"],
     ["E2E FPS (CPU)", "1.6–2.1"],
     ["Backend tests", "101/101 pass"],
     ["AI engine tests", "45/45 pass"],
@@ -704,7 +705,7 @@ _add_bullets(s, 0.6, 1.4, 12, 5.5, [
     "✅  Nhận diện biển số VN 1 hàng + 2 hàng (YOLOv5 char-level + gap clustering)",
     "✅  Backend 18 API endpoints + barrier rules 6 nhánh (101/101 tests pass)",
     "✅  Dashboard realtime monitoring (React + TypeScript)",
-    "✅  Fine-tune LP_detector trên VNLP 29,837 ảnh → 70.6% exact match (+32.7pp)",
+    "✅  Fine-tune LP_detector + PaddleOCR → 92.0% exact match (+54.2pp baseline)",
     "✅  OCR post-processing: char mapping + regex validate (45/45 tests pass)",
     "✅  Snapshot crop biển số + hiển thị thumbnail trên dashboard",
     "✅  Docker Compose deployment (3 services: postgres + backend + dashboard)",

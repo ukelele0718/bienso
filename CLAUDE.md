@@ -14,34 +14,36 @@
 
 ---
 
-## 2. Trạng thái hiện tại (cập nhật: 21/04/2026 — sau parallel sprint)
+## 2. Trạng thái hiện tại (cập nhật: 21/04/2026 — sau parallel sprint + batch LP_detector/PaddleOCR)
 
 ### Đã xong ✅
 
 | Module | Chi tiết |
 |--------|---------|
-| AI Engine | YOLOv8n + SORT + LP_detector + LP_ocr (gap-based 2-row clustering) |
-| Backend | FastAPI + 22 API endpoints + 6 barrier rules + SQLAlchemy + 10 DB tables |
-| Dashboard | React + TypeScript, 7 sections verified (events, accounts, verify, traffic, cameras) |
-| E2E flow | Video → AI → Backend → Dashboard hoạt động |
-| OCR post-processing | Char mapping + regex validate (đã tắt char mapping mặc định) |
+| AI Engine | YOLOv8n fine-tuned + SORT + LP_detector_finetuned + PaddleOCR |
+| Backend | FastAPI + 22 API + WebSocket /ws/events + 6 barrier rules + 10 DB tables |
+| Dashboard | React + TypeScript, 7 sections, AccountActions + Traffic toggle + Cameras |
+| E2E flow | Video → AI → Backend → Dashboard realtime push |
+| OCR Best | **92.0% exact match** (PaddleOCR + Finetuned LP_detector, 500 ảnh eval) |
+| Detection | **99.9%** (LP_detector finetune YOLOv8n trên VNLP 29,837) |
+| LP_detector | `models/LP_detector_finetuned.pt` (YOLOv8n, 18MB, mAP50 99.48%) |
+| PaddleOCR | `plate_ocr_paddle.py` với length guard ≤9 (filter hallucination) |
 | Snapshot saving | Crop biển số + serve static + dashboard thumbnail |
-| Full OCR eval | 3,731 ảnh VNLP: 37.8% exact match, 53.8% char accuracy |
-| Vehicle voting | Majority voting fix: cùng biển trên tracks khác nhau → type ổn định |
-| Event dedup | Server-side deduplicate by (plate_text, direction) trong 30s window |
-| Dashboard UI | 5/7 TCs verified, 2 partial TCs → full (mark-registered, adjust-balance, traffic toggle) |
-| Cameras section | GET /api/v1/cameras + CamerasSection.tsx component (Phase 09) |
-| Slide bảo vệ | 27 slides tại `slides/bao-ve-do-an.pptx` |
-| Chapter 1 draft | 412 dòng văn bản lý thuyết (6 sections, chưa edit cuối) |
-| Unit tests | 95 backend + 45 AI engine = **140 total** (all pass) |
-| Báo cáo định kỳ | `.md` + `.docx` tại `reports/2026-04-13/` và `reports/2026-04-15/` |
+| Vehicle voting | Majority voting fix (Counter-based, 12 tests) |
+| Event dedup | Server-side by (plate_text, direction) trong 30s window |
+| WebSocket | /ws/events broadcast on create_event + useEventsWs hook |
+| Slide bảo vệ | 27 slides với số 92% PaddleOCR |
+| Chapter 1 | `chapter1-theory-polished.md` 459 dòng, 16-18 trang A4 |
+| Unit tests | 101 backend + 45 AI engine + 17 OCR paddle = **163 total** (all pass) |
+| Báo cáo định kỳ | `reports/2026-04-15/` cập nhật full |
 
 ### Còn lại ⚠
 
-- Edit + finalize Chapter 1 text (draft 412 dòng OK, chỉ cần refine)
-- Test dashboard thủ công trên browser (5/7 TCs verified qua code, chưa manual test)
-- Chụp screenshot dashboard mới (after all bugfixes)
-- Viết báo cáo chính thức (điền phân công, tên sinh viên)
+- Edit + finalize Chapter 1 text (polished ready, chỉ cần SV review)
+- Điều chỉnh phân công (draft 50-50 Quang+Cần, SV chỉnh theo thực tế)
+- Test dashboard thủ công trên browser (code review OK, chụp screenshot mới)
+- Quay video demo E2E (script ready tại `demo-video-script.md`)
+- Full 3,731 eval với PaddleOCR (đang chạy, 92% trên 500 ảnh)
 
 ---
 
