@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -36,11 +36,14 @@ def test_balance_rule_init_and_charge(client: TestClient) -> None:
 
 def test_balance_can_be_negative(client: TestClient) -> None:
     plate = "30F-00001"
+    # Use timestamps 31 s apart so each event is outside the 30-second dedup window.
+    # 60 events × 2,000 VND charge = 120,000 VND total deducted from 100,000 initial balance.
+    base_ts = datetime.now(UTC)
 
     for i in range(60):
         payload = {
             "camera_id": "11111111-1111-1111-1111-111111111111",
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": (base_ts + timedelta(seconds=31 * i)).isoformat(),
             "direction": "in" if i % 2 == 0 else "out",
             "vehicle_type": "motorbike",
             "track_id": f"track-{i}",

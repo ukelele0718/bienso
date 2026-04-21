@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4, uuid5
 import re
 from typing import Any
@@ -33,6 +33,17 @@ def _new_id() -> str:
     return str(uuid4())
 
 
+def _coerce_user_id(actor: str | None) -> str | None:
+    """Return actor only if it's a valid UUID; otherwise None (audit_logs.user_id is UUID in PG)."""
+    if actor is None:
+        return None
+    try:
+        UUID(actor)
+        return actor
+    except ValueError:
+        return None
+
+
 def _append_audit_log(
     db: Session,
     *,
@@ -44,7 +55,7 @@ def _append_audit_log(
     db.add(
         AuditLog(
             id=_new_id(),
-            user_id=user_id,
+            user_id=_coerce_user_id(user_id),
             action=action,
             metadata_json=metadata_json,
             created_at=created_at,
@@ -62,6 +73,26 @@ def _coerce_camera_id(raw: str) -> str:
 
 
 def create_event(db: Session, payload: dict) -> tuple[VehicleEvent, BarrierAction | None]:
+    # --- Deduplication: reject duplicate events within time window ---
+    raw_plate = payload.get("plate_text")
+    dedup_plate = normalize_plate_text(raw_plate) if raw_plate else None
+    if dedup_plate and settings.event_dedup_window_sec > 0:
+        cutoff = payload["timestamp"] - timedelta(seconds=settings.event_dedup_window_sec)
+        recent_event = db.execute(
+            select(VehicleEvent)
+            .join(PlateRead, PlateRead.event_id == VehicleEvent.id)
+            .where(PlateRead.plate_text == dedup_plate)
+            .where(VehicleEvent.direction == payload["direction"])
+            .where(VehicleEvent.timestamp >= cutoff)
+            .order_by(VehicleEvent.timestamp.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if recent_event is not None:
+            recent_barrier = db.execute(
+                select(BarrierAction).where(BarrierAction.event_id == recent_event.id)
+            ).scalar_one_or_none()
+            return recent_event, recent_barrier
+
     camera_id = _coerce_camera_id(payload["camera_id"])
     camera = db.execute(select(Camera).where(Camera.id == camera_id)).scalar_one_or_none()
     if camera is None:
@@ -261,7 +292,7 @@ def verify_latest_hold(db: Session, plate_text: str, actor: str) -> BarrierActio
         user_id=actor,
         metadata_json={
             "plate_text": plate_text,
-            "event_id": row.event_id,
+            "event_id": str(row.event_id),
             "result": "open",
         },
         created_at=_utcnow(),
