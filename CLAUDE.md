@@ -24,7 +24,7 @@
 | Backend | FastAPI + 22 API + WebSocket /ws/events + 6 barrier rules + 10 DB tables |
 | Dashboard | React + TypeScript, 7 sections, AccountActions + Traffic toggle + Cameras |
 | E2E flow | Video → AI → Backend → Dashboard realtime push |
-| OCR Best | **92.0% exact match** (PaddleOCR + Finetuned LP_detector, 500 ảnh eval) |
+| OCR Best | **91.7% exact match** (PaddleOCR + Finetuned LP_detector, 3,731 ảnh full eval) |
 | Detection | **99.9%** (LP_detector finetune YOLOv8n trên VNLP 29,837) |
 | LP_detector | `models/LP_detector_finetuned.pt` (YOLOv8n, 18MB, mAP50 99.48%) |
 | PaddleOCR | `plate_ocr_paddle.py` với length guard ≤9 (filter hallucination) |
@@ -43,7 +43,7 @@
 - Điều chỉnh phân công (draft 50-50 Quang+Cần, SV chỉnh theo thực tế)
 - Test dashboard thủ công trên browser (code review OK, chụp screenshot mới)
 - Quay video demo E2E (script ready tại `demo-video-script.md`)
-- Full 3,731 eval với PaddleOCR (đang chạy, 92% trên 500 ảnh)
+- (Optional) Re-run E2E demo với PaddleOCR để confirm realtime UI
 
 ---
 

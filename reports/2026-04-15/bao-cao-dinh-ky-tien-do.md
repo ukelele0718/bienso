@@ -375,9 +375,9 @@ Hướng cải thiện (đã thực hiện):
      → Bật mặc định qua env: AI_PLATE_MODEL=LP_detector_finetuned.pt
 
   ✅ Phase B — PaddleOCR + Finetuned detector (OCR backend swap):
-     • PP-OCRv5 CPU trên crops từ finetuned detector: 92.0% exact match (500 ảnh)
-                                                      96.5% char accuracy
-     • Cải thiện: +23.3pp so với YOLO char + finetuned (68.7% → 92%)
+     • PP-OCRv5 CPU trên crops từ finetuned detector: 91.7% exact match (3,731 ảnh)
+                                                      97.2% char accuracy
+     • Cải thiện: +23.0pp so với YOLO char + finetuned (68.7% → 91.7%)
      • Bottleneck dịch: từ detector → OCR model; PaddleOCR có OCR robustness cao hơn
      • Lỗi còn: 35% hallucination (đọc text ngoài plate) — đã fix bằng length guard ≤9
                 40% single char (1↔8, B↔8, V↔1) — hard without model fine-tune
@@ -392,10 +392,10 @@ Kết quả tổng hợp (3 configs):
 ├──────────────────────────────────────┼──────────────┼──────────────┤
 │ Baseline LP_detector + YOLO char     │ 37.8%        │ 89.2%        │
 │ Finetuned LP_detector + YOLO char    │ 68.7%        │ 99.9%        │
-│ Finetuned LP_detector + PaddleOCR    │ 92.0% (500)* │ 99.9%        │
+│ Finetuned LP_detector + PaddleOCR    │ 91.7% (3,731)│ 99.9%        │
 └──────────────────────────────────────┴──────────────┴──────────────┘
 
-* 500-image sample; full 3,731 eval đang chạy.
+Xác nhận: Full eval 3,731 images → 91.7% exact, 97.2% char accuracy.
 
 File code: apps/ai_engine/src/plate_ocr.py (179 dòng)
 Script eval: scripts/eval-ocr-baseline.py (263 dòng)
@@ -636,14 +636,14 @@ BATCH 3 (OCR improvement + dashboard polish):
 | Phase | Tiêu đề | Kết quả |
 |-------|---------|---------|
 | E | Dashboard Improvements | AccountActions, Traffic toggle, Cameras |
-| F | PaddleOCR + Finetuned | **92.0% exact match (500 ảnh, +23.3pp)** |
+| F | PaddleOCR + Finetuned | **91.7% exact (3,731 ảnh), 97.2% char (+54pp baseline)** |
 | G | Length Guard Integration | `len(result) ≤ 9` filter hallucinations |
 | H | WebSocket Realtime Push | `/ws/events` endpoint + React hook |
 | I | Dashboard Runtime Fixes | 4 UUID serialization bugs fixed |
 
 Key insight từ sprint: Bottleneck accuracy OCR là do LP_detector, NOT OCR model.
 Sau khi retrain detector (99.9% detect) + swap OCR sang PaddleOCR, accuracy
-tăng vọt từ 37.8% → 92.0% exact match.
+tăng vọt từ 37.8% → 91.7% exact match (3,731 ảnh VNLP test).
 
 5.2.4. End-to-End Video Test (trungdinh22-demo.mp4)
 
@@ -681,9 +681,9 @@ tăng vọt từ 37.8% → 92.0% exact match.
 
 5.3. Hạn chế (đã giải quyết) và còn lại
 
-  ✅ OCR accuracy 37.8% → 68.7% → 92.0% exact match
+  ✅ OCR accuracy 37.8% → 68.7% → 91.7% exact match (3,731 ảnh)
      Hướng 1: Fine-tune LP_detector (YOLOv8n) trên VNLP 29K → 68.7%
-     Hướng 2: Swap OCR sang PaddleOCR + length guard → 92.0%
+     Hướng 2: Swap OCR sang PaddleOCR + length guard → 91.7%
      → 3 commits đã merge, 146 unit tests pass
   ✅ Post-processing (char mapping) — TẮT mặc định (-5.1% exact match)
      Regex validate bật (chỉ kiểm tra, không sửa)
@@ -746,8 +746,8 @@ Mã nguồn: https://github.com/ukelele0718/bienso
 │ Dataset VNLP                 │ 37,297 ảnh  │ 37,297 ảnh   │ 37,297 ảnh   │
 ├───────────────────────────────┼─────────────┼──────────────┼──────────────┤
 │ Plate detection rate         │ 100% (20)   │ 89.2% (3,731)│ 99.9% ✅      │
-│ OCR exact match (best)       │ 33.3% (50)  │ 37.8% (3,731)│ 92.0% ✅✅    │
-│ OCR char accuracy (best)     │ 51.0% (50)  │ 53.8% (3,731)│ 96.5% ✅✅    │
+│ OCR exact match (best)       │ 33.3% (50)  │ 37.8% (3,731)│ 91.7% (3,731)│
+│ OCR char accuracy (best)     │ 51.0% (50)  │ 53.8% (3,731)│ 97.2% ✅✅    │
 │ LP_detector                  │ baseline    │ baseline     │ Finetuned v8n │
 │ OCR backend                  │ YOLO char   │ YOLO char    │ PaddleOCR ✅  │
 │ E2E video FPS (GPU)          │ —           │ —            │ 20.3 ✅       │
@@ -766,7 +766,7 @@ Mã nguồn: https://github.com/ukelele0718/bienso
 Nhảy vọt accuracy 21/04 (sprint parallel):
   Baseline (14/04):  Detection 89.2% | OCR 37.8% | Char 53.8%
   Finetuned detector: Detection 99.9% | OCR 68.7% | Char 82.4%
-  + PaddleOCR:       Detection 99.9% | OCR 92.0% | Char 96.5% (500 ảnh)
+  + PaddleOCR:       Detection 99.9% | OCR 91.7% | Char 97.2% (3,731 ảnh)
 
 
 ═══════════════════════════════════════════════════════════════
