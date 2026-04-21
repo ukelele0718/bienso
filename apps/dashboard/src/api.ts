@@ -3,6 +3,7 @@ import type {
   AccountOut,
   AccountsSummaryResponse,
   BarrierActionOut,
+  CameraOut,
   EventOut,
   ImportBatchesSummaryResponse,
   ImportBatchOut,
@@ -123,6 +124,37 @@ export async function verifyBarrier(plate: string, actor: string): Promise<Barri
     method: 'POST',
   });
   return parseJson<BarrierActionOut>(res, 'Failed to verify barrier action');
+}
+
+export async function markRegistered(plate: string): Promise<void> {
+  const res = await fetch(
+    `${BASE_URL}/api/v1/accounts/${encodeURIComponent(plate)}/mark-registered`,
+    { method: 'POST' }
+  );
+  if (!res.ok) throw new Error('Failed to mark account as registered');
+}
+
+export async function adjustBalance(
+  plate: string,
+  amountVnd: number,
+  reason: string
+): Promise<{ new_balance_vnd: number }> {
+  const res = await fetch(
+    `${BASE_URL}/api/v1/accounts/${encodeURIComponent(plate)}/adjust-balance`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount_vnd: amountVnd, reason }),
+    }
+  );
+  if (!res.ok) throw new Error('Failed to adjust balance');
+  const data = (await res.json()) as { plate_text: string; balance_vnd: number };
+  return { new_balance_vnd: data.balance_vnd };
+}
+
+export async function fetchCameras(): Promise<CameraOut[]> {
+  const res = await fetch(`${BASE_URL}/api/v1/cameras`);
+  return parseJson<CameraOut[]>(res, 'Failed to fetch cameras');
 }
 
 export async function createPretrainedInferJob(payload: PretrainedInferIn): Promise<PretrainedJobOut> {

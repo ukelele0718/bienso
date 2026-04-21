@@ -230,3 +230,13 @@ class PretrainedJobsSummaryOut(BaseModel):
     running: int
     success: int
     failed: int
+
+
+class CameraOut(BaseModel):
+    id: _Str
+    name: str
+    gate_type: str
+    location: str | None = None
+    stream_url: str | None = None
+    is_active: bool
+    created_at: datetime

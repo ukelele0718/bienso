@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import {
@@ -11,21 +11,23 @@ import {
   fetchImportBatchesSummary,
   fetchOcrRate,
   fetchRealtimeStats,
-  fetchTraffic,
   fetchTransactions,
   verifyBarrier,
 } from './api';
 import type {
   AccountListItem,
+  AccountOut,
   AccountsSummaryResponse,
   BarrierActionOut,
   EventOut,
   ImportBatchesSummaryResponse,
   ImportBatchOut,
   RealtimeStatOut,
-  TrafficStatOut,
 } from './api-types';
+import { AccountDetailActions } from './components/AccountDetailActions';
+import { CamerasSection } from './components/CamerasSection';
 import { ImportSummarySection } from './components/ImportSummarySection';
+import { TrafficSection } from './components/TrafficSection';
 import { VerifyQueueSection } from './components/VerifyQueueSection';
 
 const cardStyle: React.CSSProperties = {
@@ -99,11 +101,11 @@ function App(): React.JSX.Element {
   const [realtime, setRealtime] = useState<RealtimeStatOut | null>(null);
   const [ocrRate, setOcrRate] = useState<number | null>(null);
   const [events, setEvents] = useState<EventOut[]>([]);
-  const [traffic, setTraffic] = useState<TrafficStatOut[]>([]);
   const [plateQuery, setPlateQuery] = useState('');
   const [fromTime, setFromTime] = useState('');
   const [toTime, setToTime] = useState('');
   const [searchEvents, setSearchEvents] = useState<EventOut[]>([]);
+  const [accountDetail, setAccountDetail] = useState<AccountOut | null>(null);
   const [accountBalance, setAccountBalance] = useState<number | null>(null);
   const [transactionsCount, setTransactionsCount] = useState<number | null>(null);
   const [barrierActions, setBarrierActions] = useState<BarrierActionOut[]>([]);
@@ -142,16 +144,14 @@ function App(): React.JSX.Element {
   async function loadRealtime(): Promise<void> {
     try {
       setLoading(true);
-      const [realtimeRes, eventsRes, ocrRes, trafficRes] = await Promise.all([
+      const [realtimeRes, eventsRes, ocrRes] = await Promise.all([
         fetchRealtimeStats(),
         fetchEvents(),
         fetchOcrRate(),
-        fetchTraffic('hour'),
       ]);
       setRealtime(realtimeRes);
       setEvents(eventsRes.slice(0, 8));
       setOcrRate(ocrRes.success_rate);
-      setTraffic(trafficRes);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -231,6 +231,20 @@ function App(): React.JSX.Element {
     }
   }
 
+  async function refreshAccountDetail(plate: string): Promise<void> {
+    try {
+      const [account, transactions] = await Promise.all([
+        fetchAccount(plate),
+        fetchTransactions(plate),
+      ]);
+      setAccountDetail(account);
+      setAccountBalance(account.balance_vnd);
+      setTransactionsCount(transactions.length);
+    } catch (err) {
+      console.error('Failed to refresh account detail:', err);
+    }
+  }
+
   async function handleSearch(): Promise<void> {
     if (!plateQuery.trim()) return;
     try {
@@ -245,6 +259,7 @@ function App(): React.JSX.Element {
           to_time: toTime || undefined,
         }),
       ]);
+      setAccountDetail(account);
       setAccountBalance(account.balance_vnd);
       setTransactionsCount(transactions.length);
       setBarrierActions(barrier);
@@ -256,10 +271,6 @@ function App(): React.JSX.Element {
       setLoading(false);
     }
   }
-
-  const trafficSummary = useMemo(() => {
-    return traffic.map((bucket) => `${bucket.bucket}: ${bucket.total_in}/${bucket.total_out}`).join(' • ');
-  }, [traffic]);
 
   const totalPages = Math.ceil(accountsTotal / accountsPageSize);
 
@@ -310,13 +321,10 @@ function App(): React.JSX.Element {
         </div>
       </section>
 
-      {/* Traffic Summary Row */}
-      <section style={{ marginTop: 16 }}>
-        <div style={cardStyle}>
-          <p style={{ margin: 0, color: '#64748b' }}>Traffic summary</p>
-          <p style={{ margin: '8px 0', fontWeight: 600 }}>{trafficSummary || '--'}</p>
-        </div>
-      </section>
+      {/* Traffic Statistics with Hour/Day toggle */}
+      <div style={{ marginTop: 16 }}>
+        <TrafficSection />
+      </div>
 
       <section style={{ marginTop: 24, display: 'grid', gap: 16, gridTemplateColumns: '2fr 1fr' }}>
         <div style={cardStyle}>
@@ -389,9 +397,19 @@ function App(): React.JSX.Element {
 
           <div style={{ marginTop: 16 }}>
             <p style={{ margin: 0, color: '#64748b' }}>Balance</p>
-            <h3 style={{ margin: '6px 0' }}>{accountBalance !== null ? `${accountBalance} VND` : '--'}</h3>
+            <h3 style={{ margin: '6px 0' }}>{accountBalance !== null ? `${accountBalance.toLocaleString()} VND` : '--'}</h3>
+            {accountDetail && (
+              <p style={{ margin: '0 0 6px', color: '#64748b', fontSize: '13px' }}>
+                Status: <strong>{accountDetail.registration_status ?? 'unknown'}</strong>
+              </p>
+            )}
             <p style={{ margin: 0, color: '#64748b' }}>Transactions</p>
             <p style={{ margin: '6px 0', fontWeight: 600 }}>{transactionsCount ?? '--'}</p>
+            <AccountDetailActions
+              plateText={plateQuery}
+              account={accountDetail}
+              onRefresh={refreshAccountDetail}
+            />
           </div>
         </div>
       </section>
@@ -593,6 +611,8 @@ function App(): React.JSX.Element {
           void handleVerify(plate);
         }}
       />
+
+      <CamerasSection />
     </div>
   );
 }

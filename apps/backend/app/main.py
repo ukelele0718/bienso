@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from . import crud, crud_pretrained
 from .response_mappers import to_account_out, to_barrier_action_out, to_event_out
 from .db import get_db
+from .models import Camera
 from .schemas import (
     AccountListItem,
     AccountListResponse,
@@ -26,6 +27,7 @@ from .schemas import (
     AdjustBalanceIn,
     AdjustBalanceResponse,
     BarrierActionOut,
+    CameraOut,
     ErrorOut,
     EventIn,
     EventOut,
@@ -201,6 +203,24 @@ def get_import_batches(
 def get_import_batches_summary(db: Session = Depends(get_db)) -> ImportBatchesSummaryResponse:
     summary = crud.get_import_batches_summary(db)
     return ImportBatchesSummaryResponse(**summary)
+
+
+@app.get("/api/v1/cameras", response_model=List[CameraOut])
+def list_cameras(db: Session = Depends(get_db)) -> List[CameraOut]:
+    from sqlalchemy import select  # noqa: WPS433
+    rows = db.execute(select(Camera).order_by(Camera.created_at.desc())).scalars().all()
+    return [
+        CameraOut(
+            id=str(r.id),
+            name=r.name,
+            gate_type=r.gate_type,
+            location=r.location,
+            stream_url=r.stream_url,
+            is_active=r.is_active,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
 
 
 @app.get("/api/v1/accounts/{plate_text}", response_model=AccountOut)

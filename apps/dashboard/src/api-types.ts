@@ -186,3 +186,13 @@ export interface PretrainedJobsSummaryOut {
   success: number;
   failed: number;
 }
+
+export interface CameraOut {
+  id: string;
+  name: string;
+  gate_type: string;
+  location: string | null;
+  stream_url: string | null;
+  is_active: boolean;
+  created_at: string;
+}
